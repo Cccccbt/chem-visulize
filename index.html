@@ -504,7 +504,7 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 
 <div class="app" id="tApp" hidden>
   <main class="viewer" id="tViewer">
-    <div class="labels" id="tLabels"><div class="tsel" id="tSel" hidden></div></div>
+    <div class="labels" id="tLabelLayer"><div class="tsel" id="tSel" hidden></div></div>
     <div class="hud hud-tl">
       <div class="qtitle"><div class="tprop" id="tTitle"></div><div class="qtuple" id="tSub"></div></div>
     </div>
@@ -541,7 +541,21 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
       </div>
       <div class="toggles">
         <label class="sw"><input type="checkbox" id="tBlock">Color by block</label>
-        <label class="sw"><input type="checkbox" id="tSpin">Auto-rotate</label>
+        <label class="sw"><input type="checkbox" id="tRot">Auto-rotate</label>
+        <label class="sw"><input type="checkbox" id="tLbl">Element labels</label>
+      </div>
+    </section>
+
+    <section aria-label="Scale" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0">Scale</h2>
+      <div class="seg three" role="radiogroup" aria-label="Height scale" id="tScale">
+        <button type="button" role="radio" data-s="linear" title="Height proportional to value, starting from zero">Linear</button>
+        <button type="button" role="radio" data-s="range" title="Stretch the minimum–maximum range to the full height">Fit range</button>
+        <button type="button" role="radio" data-s="log" title="Logarithmic: equal ratios give equal height steps">Log</button>
+      </div>
+      <div class="slider">
+        <label for="tHeight"><span>Bar height</span><output id="tHeightOut"></output></label>
+        <input type="range" id="tHeight" min="0.25" max="3" step="0.05">
       </div>
     </section>
 
@@ -1687,9 +1701,11 @@ const BLOCK_TINT = {s: 'rgba(255,128,150,.16)', p: 'rgba(255,196,110,.15)', d: '
 const H_MAX = 5.5, FOOT = 0.58, BAR_DZ = -0.13;
 
 /* ---------- state ---------- */
-const DEF = {prop: 'ie', view: '3d', Z: 11, hl: 'none', block: false, spin: false};
+const DEF = {prop: 'ie', view: '3d', Z: 11, hl: 'none', block: false, spin: false, scale: 'linear', hScale: 1, labels: true};
 const S = {...DEF}; try { Object.assign(S, JSON.parse(ls.get('trends-view') || '{}')); } catch (e) {}
 if (!PROPS[S.prop]) S.prop = 'ie';
+if (!['linear', 'range', 'log'].includes(S.scale)) S.scale = 'linear';
+S.hScale = Math.min(3, Math.max(0.25, +S.hScale || 1));
 const save = () => ls.set('trends-view', JSON.stringify(S));
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -1702,6 +1718,14 @@ const minOf = p => { let m = Infinity; for (let Z = 1; Z <= 118; Z++) { const v 
 function rampColor(t, hue) {        // one hue, dim → bright on the dark field
   const c = new THREE.Color(); c.setHSL(hue / 360, 0.42 + 0.4 * t, 0.2 + 0.56 * t); return c;
 }
+// height scale: maps a value to 0–1 (norm) and back (denorm) for axis ticks
+function scaleOf(p) {
+  const mx = maxOf(p), mnv = minOf(p);
+  if (S.scale === 'range') { const lo = mnv - 0.08 * (mx - mnv); return {norm: v => (v - lo) / (mx - lo), denorm: t => lo + t * (mx - lo), lo}; }
+  if (S.scale === 'log') { const lo = Math.max(mnv, 1e-3) / 1.6, k = Math.log(mx / lo); return {norm: v => v > 0 ? Math.log(v / lo) / k : 0, denorm: t => lo * Math.exp(t * k), lo}; }
+  return {norm: v => v / mx, denorm: t => t * mx, lo: 0};
+}
+const SCALE_TXT = {linear: 'bar height ∝ value', range: 'bar height: min → max stretched', log: 'bar height ∝ log(value)'};
 function rankOf(Z) {
   const v = val(Z); if (v == null) return null;
   let rank = 1, n = 0; for (let k = 1; k <= 118; k++) { const w = val(k); if (w == null) continue; n++; if (w > v) rank++; }
@@ -1715,7 +1739,7 @@ function membersOf(kind, Z) {
 }
 
 /* ---------- scene ---------- */
-let inited = false, renderer, scene, camera, controls, viewer, bars = [], ground, camTween = null;
+let inited = false, renderer, scene, camera, controls, viewer, bars = [], labels = [], ground, camTween = null;
 const cur = new Float32Array(119), target = new Float32Array(119);
 const CENTER = new THREE.Vector3(0, 1.4, 0.2);
 const VIEWS = {
@@ -1760,6 +1784,18 @@ function drawGround() {
   ground.material.map = tex; ground.material.needsUpdate = true;
 }
 
+function drawLabels() {          // one small symbol texture per bar, drawn as a camera-facing sprite above it
+  for (let Z = 1; Z <= 118; Z++) {
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
+    const g = cv.getContext('2d'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 40px Archivo, "IBM Plex Sans", sans-serif';
+    g.lineJoin = 'round'; g.lineWidth = 8; g.strokeStyle = 'rgba(10,13,18,.92)'; g.strokeText(SYM[Z - 1], 64, 34);
+    g.fillStyle = '#E3E6EB'; g.fillText(SYM[Z - 1], 64, 34);
+    const tex = new THREE.CanvasTexture(cv); tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const mat = labels[Z].material; if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true;
+  }
+}
+
 function initScene() {
   viewer = $('#tViewer');
   renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
@@ -1791,22 +1827,28 @@ function initScene() {
   }
   const resize = () => { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   new ResizeObserver(resize).observe(viewer); resize();
+  for (let Z = 1; Z <= 118; Z++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({transparent: true, depthWrite: false}));
+    sp.scale.set(0.62, 0.31, 1); sp.visible = false; scene.add(sp); labels[Z] = sp;
+  }
+  drawLabels(); if (document.fonts) document.fonts.ready.then(drawLabels);
   bindPointer();
   loop();
 }
 
 function applyBars() {
-  const p = P(), mx = maxOf(p), mn = Math.min(0, minOf(p));
+  const p = P(), mx = maxOf(p), mn = Math.min(0, minOf(p)), sc = scaleOf(p), HM = H_MAX * S.hScale;
   const members = S.hl !== 'none' ? new Set(membersOf(S.hl, S.Z)) : null;
   for (let Z = 1; Z <= 118; Z++) {
     const m = bars[Z], v = p.get(Z), unb = S.prop === 'ea' && UNBOUND.has(Z);
     let h = 0, col;
-    if (v != null) { h = Math.max(0.02, (v / mx) * H_MAX); col = S.block ? new THREE.Color(BLOCK_RGB[blockOf(Z)]) : rampColor((v - mn) / (mx - mn), p.hue); }
-    else if (unb) { h = 0.05; col = new THREE.Color('#FF8A80'); }
+    if (v != null) { h = Math.max(0.02, Math.max(0, sc.norm(v)) * HM); col = S.block ? new THREE.Color(BLOCK_RGB[blockOf(Z)]) : rampColor((v - mn) / (mx - mn), p.hue); }
+    else if (unb) { h = 0.05 * Math.min(1, S.hScale); col = new THREE.Color('#FF8A80'); }
     target[Z] = h; m.userData.has = v != null || unb;
     if (col) m.material.color.copy(col);
     const dim = members && !members.has(Z);
     m.material.opacity = dim ? 0.13 : 1; m.material.depthWrite = !dim;
+    labels[Z].material.opacity = dim ? 0.18 : 1;
     if (Z === S.Z) m.material.emissive.setHex(0x22305a); else m.material.emissive.setHex(0x000000);
     if (reduced) cur[Z] = h;
   }
@@ -1838,6 +1880,7 @@ function loop() {
   for (let Z = 1; Z <= 118; Z++) {
     const d = target[Z] - cur[Z]; cur[Z] = Math.abs(d) < 1e-3 ? target[Z] : cur[Z] + d * 0.14;
     const m = bars[Z]; m.scale.y = Math.max(cur[Z], 0.001); m.visible = m.userData.has || cur[Z] > 0.01;
+    const sp = labels[Z]; sp.visible = S.labels && m.visible && Z !== S.Z; sp.position.set(POS[Z].x, cur[Z] + 0.2, POS[Z].z + BAR_DZ);
   }
   controls.update();
   renderer.render(scene, camera);
@@ -1898,7 +1941,9 @@ function render() {
   const p = P(), Z = S.Z;
   document.querySelectorAll('#tProp button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.p === S.prop)));
   $('#tTitle').textContent = p.name;
-  $('#tSub').innerHTML = `bar height ∝ value · <b>${p.unit}</b>`;
+  $('#tSub').innerHTML = `${SCALE_TXT[S.scale]} · <b>${p.unit}</b>`;
+  document.querySelectorAll('#tScale button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.s === S.scale)));
+  $('#tHeight').value = S.hScale; $('#tHeightOut').textContent = S.hScale.toFixed(2) + '×';
   // legend
   const mx = maxOf(p), mn = Math.min(0, minOf(p));
   const stops = [0, .25, .5, .75, 1].map(t => '#' + rampColor(t, p.hue).getHexString()).join(',');
@@ -1928,7 +1973,7 @@ function render() {
     ? '<b>Data.</b> Covalent radii (Cordero et al., 2008), available for Z = 1–96; Mn, Fe and Co use low-spin values. Noble-gas values come from their few known compounds, so treat them with care.'
     : S.prop === 'ie' ? '<b>Data.</b> First ionization energies from the NIST Atomic Spectra Database, available for Z = 1–103. 1 eV = 96.485 kJ/mol.'
     : '<b>Data.</b> Experimental electron affinities (energy released when a gaseous atom gains one electron). Most lanthanides, actinides and superheavy elements have no reliable measured value and are left empty.';
-  $('#tBlock').checked = S.block; $('#tSpin').checked = S.spin;
+  $('#tBlock').checked = S.block; $('#tRot').checked = S.spin; $('#tLbl').checked = S.labels;
   if (inited) applyBars();
   drawCharts();
 }
@@ -1939,11 +1984,11 @@ function drawChart(id, list, readId) {
   const cv = $(id), dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
   if (!W) return; cv.width = W * dpr; cv.height = H * dpr;
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  const p = P(), mx = maxOf(p), L = 34, R = 10, T = 12, B = 22, iw = W - L - R, ih = H - T - B;
-  const n = list.length, xs = i => L + (n === 1 ? iw / 2 : i * iw / (n - 1)), ys = v => T + ih - Math.max(0, v) / mx * ih;
+  const p = P(), sc = scaleOf(p), L = 34, R = 10, T = 12, B = 22, iw = W - L - R, ih = H - T - B;
+  const n = list.length, xs = i => L + (n === 1 ? iw / 2 : i * iw / (n - 1)), ys = v => T + ih - Math.max(0, sc.norm(v)) * ih;
   g.font = '500 10px "IBM Plex Mono", monospace'; g.fillStyle = '#8A93A1'; g.textAlign = 'right'; g.textBaseline = 'middle';
   g.strokeStyle = '#1E2530'; g.lineWidth = 1;
-  [0, 0.5, 1].forEach(t => { const y = T + ih - t * ih; g.beginPath(); g.moveTo(L, y + .5); g.lineTo(W - R, y + .5); g.stroke(); g.fillText(fmt(mx * t, {dec: p.dec ? 1 : 0}), L - 5, y); });
+  [0, 0.5, 1].forEach(t => { const y = T + ih - t * ih; g.beginPath(); g.moveTo(L, y + .5); g.lineTo(W - R, y + .5); g.stroke(); const tv = sc.denorm(t); g.fillText(fmt(tv, {dec: p.dec ? (tv < 1 && S.scale !== 'linear' ? 2 : 1) : 0}), L - 5, y); });
   const color = '#' + rampColor(0.85, p.hue).getHexString();
   g.strokeStyle = color; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath(); let open = false;
   list.forEach((Z, i) => { const v = p.get(Z); if (v == null) { open = false; return; } const x = xs(i), y = ys(v); if (open) g.lineTo(x, y); else g.moveTo(x, y); open = true; });
@@ -1994,7 +2039,10 @@ function bindPanel() {
   });
   $('#tHl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.hl = b.dataset.h; save(); render(); });
   $('#tBlock').addEventListener('change', e => { S.block = e.target.checked; save(); render(); });
-  $('#tSpin').addEventListener('change', e => { S.spin = e.target.checked; save(); });
+  $('#tRot').addEventListener('change', e => { S.spin = e.target.checked; save(); });
+  $('#tLbl').addEventListener('change', e => { S.labels = e.target.checked; save(); });
+  $('#tScale').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.scale = b.dataset.s; save(); render(); });
+  $('#tHeight').addEventListener('input', e => { S.hScale = +e.target.value; $('#tHeightOut').textContent = S.hScale.toFixed(2) + '×'; save(); if (inited) applyBars(); });
   $('#tReset').addEventListener('click', () => setView(S.view in VIEWS ? S.view : '3d'));
   $('#tEx').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; const ex = P().ex[+b.dataset.i];
