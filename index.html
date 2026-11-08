@@ -286,12 +286,18 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 .tex button small{display:block;color:var(--muted);font-size:11px}
 
 /* ---------- collapsible side panel ---------- */
-.sidebtn{display:inline-flex;align-items:center;gap:6px}
-.sidebtn svg{width:14px;height:14px;flex:none}
+.ptop{display:flex;gap:8px;align-items:stretch}
+.ptop .tabs{flex:1;min-width:0}
+.sideclose{flex:none;display:grid;place-items:center;width:38px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--muted);padding:0}
+.sideclose:hover{color:var(--fg);border-color:var(--accent)}
+.sideclose svg,.sidebtn svg{width:15px;height:15px;flex:none}
+.sidebtn{display:none;align-items:center;gap:6px}
+body.side-off .sidebtn{display:inline-flex}
 body.side-off .app{grid-template-columns:minmax(0,1fr);grid-template-areas:"viewer"}
 body.side-off .app > .panel{display:none}
 @media (max-width:760px){
-  .sidebtn{display:none}
+  .sidebtn,.sideclose{display:none}
+  body.side-off .sidebtn{display:none}
   body.side-off .app > .panel{display:flex}
 }
 </style>
@@ -2078,25 +2084,38 @@ if (location.hash === '#trends') window.initTrends();
   const ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M6 2.75v10.5"/></svg>';
   let off = false;
   try { off = localStorage.getItem(KEY) === '1'; } catch (e) {}
-  const btns = [];
+  // "Hide" button lives inside each panel, next to the page tabs
+  document.querySelectorAll('.app > .panel').forEach(p => {
+    const nav = p.querySelector(':scope > .tabs');
+    const row = document.createElement('div'); row.className = 'ptop';
+    if (nav) { p.insertBefore(row, nav); row.appendChild(nav); } else p.prepend(row);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sideclose'; b.innerHTML = ICON;
+    b.title = 'Hide side panel ( [ )'; b.setAttribute('aria-label', 'Hide side panel');
+    b.addEventListener('click', () => set(true));
+    row.appendChild(b);
+  });
+  // "Show" button in the viewer, visible only while the panel is hidden
+  const shows = [];
   document.querySelectorAll('.app > .viewer').forEach(v => {
     let hud = v.querySelector(':scope > .hud-tl');
     if (!hud) { hud = document.createElement('div'); hud.className = 'hud hud-tl'; v.appendChild(hud); }
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'hbtn sidebtn';
-    b.addEventListener('click', () => set(!off));
-    hud.prepend(b); btns.push(b);
+    b.innerHTML = ICON + '<span>Show panel</span>'; b.title = 'Show side panel ( [ )';
+    b.addEventListener('click', () => set(false));
+    hud.prepend(b); shows.push(b);
   });
   function set(v) {
-    off = v;
+    const was = off; off = v;
     document.body.classList.toggle('side-off', off);
     try { localStorage.setItem(KEY, off ? '1' : '0'); } catch (e) {}
-    btns.forEach(b => {
-      b.innerHTML = ICON + '<span>' + (off ? 'Show panel' : 'Hide panel') + '</span>';
-      b.setAttribute('aria-pressed', String(off));
-      b.title = (off ? 'Show' : 'Hide') + ' side panel ( [ )';
-    });
     window.dispatchEvent(new Event('resize'));
+    if (was !== off) {  // keep keyboard focus on the visible counterpart
+      const app = document.querySelector('.app:not([hidden])');
+      const f = app && app.querySelector(off ? '.sidebtn' : '.sideclose');
+      if (f && document.activeElement && document.activeElement.matches('.sidebtn,.sideclose')) f.focus();
+    }
   }
   document.addEventListener('keydown', e => {
     if (e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return;
