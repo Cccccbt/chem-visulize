@@ -284,6 +284,16 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 .tex button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:5px 9px;font-size:12px;text-align:left;line-height:1.3}
 .tex button:hover{border-color:var(--accent)}
 .tex button small{display:block;color:var(--muted);font-size:11px}
+
+/* ---------- collapsible side panel ---------- */
+.sidebtn{display:inline-flex;align-items:center;gap:6px}
+.sidebtn svg{width:14px;height:14px;flex:none}
+body.side-off .app{grid-template-columns:minmax(0,1fr);grid-template-areas:"viewer"}
+body.side-off .app > .panel{display:none}
+@media (max-width:760px){
+  .sidebtn{display:none}
+  body.side-off .app > .panel{display:flex}
+}
 </style>
 
 <div class="app" id="elApp">
@@ -2059,6 +2069,42 @@ window.initTrends = function () {
   render();
 };
 if (location.hash === '#trends') window.initTrends();
+})();
+</script>
+<script>
+/* ---------- collapsible side panel (shared by all pages) ---------- */
+(function () {
+  const KEY = 'aov.sideOff';
+  const ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M6 2.75v10.5"/></svg>';
+  let off = false;
+  try { off = localStorage.getItem(KEY) === '1'; } catch (e) {}
+  const btns = [];
+  document.querySelectorAll('.app > .viewer').forEach(v => {
+    let hud = v.querySelector(':scope > .hud-tl');
+    if (!hud) { hud = document.createElement('div'); hud.className = 'hud hud-tl'; v.appendChild(hud); }
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'hbtn sidebtn';
+    b.addEventListener('click', () => set(!off));
+    hud.prepend(b); btns.push(b);
+  });
+  function set(v) {
+    off = v;
+    document.body.classList.toggle('side-off', off);
+    try { localStorage.setItem(KEY, off ? '1' : '0'); } catch (e) {}
+    btns.forEach(b => {
+      b.innerHTML = ICON + '<span>' + (off ? 'Show panel' : 'Hide panel') + '</span>';
+      b.setAttribute('aria-pressed', String(off));
+      b.title = (off ? 'Show' : 'Hide') + ' side panel ( [ )';
+    });
+    window.dispatchEvent(new Event('resize'));
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key !== '[' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    e.preventDefault(); set(!off);
+  });
+  set(off);
 })();
 </script>
 </body></html>
