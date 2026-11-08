@@ -1,0 +1,2016 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<title>Atomic Orbital Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+</head>
+<body>
+<style>
+/* Layout: instrument console — a narrow control rail on the left, a full-bleed dark specimen chamber on the right. Deliberately single (dark) theme: orbitals glow against a dark field. */
+:root{
+  --scrim:rgba(10,13,18,.9);
+  --bk-s:rgba(255,128,150,.13);
+  --bk-p:rgba(255,196,110,.12);
+  --bk-d:rgba(120,165,255,.14);
+  --bk-f:rgba(130,220,170,.12);
+  --bk-on:rgba(169,193,255,.22);
+  --bg:#0A0D12;
+  --bg-hi:#141A24;
+  --panel:#10141A;
+  --raise:#171C24;
+  --line:#252C37;
+  --fg:#E3E6EB;
+  --muted:#8A93A1;
+  --accent:#A9C1FF;
+  --nucleus:#F2C46D;
+  --glass:rgba(10,13,18,.66);
+  --danger:#FF8A80;
+  --f-display:"Archivo","IBM Plex Sans","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-body:"IBM Plex Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-areas:"panel viewer";height:100%}
+
+/* ---------- viewer ---------- */
+.viewer{grid-area:viewer;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,var(--bg-hi) 0%,var(--bg) 72%);min-width:0}
+.viewer canvas{display:block;width:100%;height:100%;touch-action:none}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.olabel{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:2px 8px 2px 6px;border:1px solid var(--line);border-radius:999px;background:var(--glass);font:500 12px/1.3 var(--f-mono);white-space:nowrap;will-change:transform}
+.olabel i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.olabel sub,.oname sub{font-size:.74em;vertical-align:-.25em;line-height:0}
+.axlabel{position:absolute;left:0;top:0;font:500 12px var(--f-mono);color:var(--muted);will-change:transform}
+.hud{position:absolute;display:flex;gap:8px;align-items:center;pointer-events:none}
+.hud > *{pointer-events:auto}
+.hud-tl{top:14px;left:16px;flex-direction:column;align-items:flex-start;gap:6px}
+.hud-tr{top:14px;right:max(16px,env(safe-area-inset-right,0px))}
+.hud-bl{bottom:16px;left:16px}
+.hud-br{bottom:16px;right:max(16px,env(safe-area-inset-right,0px))}
+.chip{font:500 12px var(--f-mono);color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.chip b{color:var(--fg);font-weight:500}
+.status{color:var(--accent)}
+.status::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:7px;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.hbtn{background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12.5px;color:var(--fg)}
+.hbtn:hover{border-color:var(--accent)}
+.scale{display:flex;flex-direction:column;gap:4px;font:500 12px var(--f-mono);color:var(--muted)}
+.scale-bar{height:6px;border:1.5px solid var(--fg);border-top:0;width:80px;transition:width .15s}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:5px 9px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;background:var(--accent)}
+.legend i.neg{background:#3c4c78}
+
+/* ---------- panel ---------- */
+.panel{grid-area:panel;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding-block:20px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;display:flex;flex-direction:column;gap:22px;min-width:0}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand h1{margin:0;font:700 19px/1.2 var(--f-display);font-stretch:88%;letter-spacing:.02em;text-wrap:balance}
+.brand p{margin:0;color:var(--muted);font-size:12.5px}
+.sec-h{margin:0 0 10px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+.el{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:stretch}
+.tile{width:96px;border:1.5px solid var(--fg);border-radius:4px;padding:6px 8px 8px;display:flex;flex-direction:column;background:var(--raise)}
+.tile .z{font:500 13px var(--f-mono);color:var(--muted)}
+.tile .sym{font:800 46px/1 var(--f-display);font-stretch:80%;letter-spacing:-.01em;margin-top:2px}
+.tile .cn{font-size:12px;overflow-wrap:anywhere;line-height:1.2;margin-top:auto;padding-top:4px}
+.el-meta{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cfg{font:500 14px/1.4 var(--f-mono);overflow-wrap:anywhere}
+.facts{font-size:12.5px;color:var(--muted)}
+.zrow{display:flex;gap:6px;margin-top:auto}
+.zrow button{width:34px;flex:none;border:1px solid var(--line);background:var(--raise);border-radius:6px;font-size:16px}
+.zrow button:hover{border-color:var(--accent)}
+.zrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 9px;font-family:var(--f-mono)}
+.zrow input[aria-invalid="true"]{border-color:var(--danger)}
+.pt{position:absolute;inset:0;z-index:5;background:var(--scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:10px;padding-block:14px 16px;padding-left:16px;padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pt-head{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
+.pt-head h2{margin:0;font:700 18px var(--f-display);font-stretch:88%}
+.pt-info{font:500 13px var(--f-mono);color:var(--muted);min-width:0;flex:1}
+.pt-info b{color:var(--fg);font-weight:500}
+.pt-legend{display:flex;gap:10px;font-size:12px;color:var(--muted)}
+.pt-legend span{display:flex;align-items:center;gap:5px}
+.pt-legend i{width:11px;height:11px;border-radius:3px;border:1px solid var(--line)}
+.pt-scroll{overflow:auto;flex:1;min-height:0}
+.pt-grid{display:grid;grid-template-columns:repeat(18,minmax(32px,1fr));grid-template-rows:repeat(7,auto) 10px auto auto;gap:3px;min-width:620px;max-width:1080px;margin:0 auto}
+.pt-cell{aspect-ratio:1/1.08;border:1px solid var(--line);border-radius:4px;background:var(--bk);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 3px;min-width:0;color:var(--fg)}
+.pt-cell .z{font:500 9.5px/1 var(--f-mono);color:var(--muted);align-self:flex-start}
+.pt-cell .s{font:700 clamp(12px,1.35vw,18px)/1.1 var(--f-display);font-stretch:85%;margin-bottom:4px}
+.pt-cell:hover{border-color:var(--accent)}
+.pt-cell[aria-current="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:var(--bk-on)}
+.pt-ph{border:1px dashed var(--line);border-radius:4px;display:grid;place-items:center;font:500 9.5px var(--f-mono);color:var(--muted);text-align:center;line-height:1.2}
+.pt-flab{grid-column:1 / span 2;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;color:var(--muted)}
+.ptbtn{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--fg);letter-spacing:0;text-transform:none;font-weight:500}
+.ptbtn:hover{border-color:var(--accent)}
+.tile .sym sup{font:700 17px var(--f-mono);vertical-align:1.2em;margin-left:1px;color:var(--accent)}
+.erow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:6px;align-items:center;margin-top:10px}
+.erow .elab{font-size:12.5px;color:var(--muted);margin-right:4px}
+.erow button{height:32px;min-width:44px;border:1px solid var(--line);background:var(--raise);border-radius:6px;font:500 13px var(--f-mono);padding:0 8px}
+.erow button:hover:not(:disabled){border-color:var(--accent)}
+.erow button:disabled{opacity:.35;cursor:not-allowed}
+.ecount{display:flex;align-items:center;justify-content:center;gap:8px;height:32px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font:500 13px var(--f-mono);font-variant-numeric:tabular-nums}
+.ecount b{font-weight:500;color:var(--accent)}
+.erow .neutral{font-family:var(--f-body);font-size:12px}
+.hint{font-size:12px;color:var(--danger);min-height:0}
+input[type=range]{width:100%;accent-color:var(--accent)}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;padding:3px;background:var(--bg);gap:3px}
+.seg.three{grid-template-columns:1fr 1fr 1fr}
+.viewer canvas.bohr{position:absolute;inset:0}
+.seg button{border:0;background:none;border-radius:6px;padding:8px 6px;color:var(--muted);font-weight:500}
+.seg button[aria-checked="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+
+.ctl{display:flex;flex-direction:column;gap:12px}
+.slider label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px}
+.slider output{font:500 12.5px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none}
+.sw input{appearance:none;-webkit-appearance:none;width:30px;height:17px;border-radius:999px;background:var(--line);position:relative;flex:none;cursor:pointer;margin:0;transition:background .15s}
+.sw input::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.sw input:checked{background:#3a4a74}
+.sw input:checked::after{transform:translateX(13px);background:var(--accent)}
+
+.bulk{display:flex;gap:6px;flex-wrap:wrap}
+.bulk button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:4px 9px;font-size:12px;color:var(--fg);letter-spacing:0}
+.bulk button:hover{border-color:var(--accent)}
+
+.olist{display:flex;flex-direction:column;gap:8px}
+.ecap{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.5}
+.ecap b{color:var(--fg);font-weight:500}
+.sub{border:1px solid var(--line);border-radius:8px;background:var(--raise)}
+.sub-h{display:flex;align-items:center;gap:8px;padding:7px 8px}
+.sub-name{font:700 16px var(--f-display);font-stretch:90%;min-width:30px}
+.sub-e{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.sub-z{font:400 11.5px var(--f-mono);color:var(--muted);margin-left:auto;white-space:nowrap}
+.chev{border:0;background:none;color:var(--muted);width:24px;height:24px;border-radius:4px;display:grid;place-items:center;flex:none}
+.chev svg{transition:transform .15s}
+.sub[data-open="false"] .chev svg{transform:rotate(-90deg)}
+.sub[data-open="false"] .rows{display:none}
+.rows{border-top:1px solid var(--line);padding:4px 8px 6px;display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:24px 22px minmax(0,1fr) auto 24px;gap:8px;align-items:center;padding:3px 0}
+.row[data-empty="true"] .oname{color:var(--muted)}
+.oname{font:500 13.5px var(--f-mono);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.box{display:inline-flex;width:30px;height:20px;border:1px solid var(--line);border-radius:3px;align-items:center;justify-content:center;font:500 12px var(--f-mono);letter-spacing:-.05em;color:var(--fg);background:var(--bg)}
+.eye,.solo{border:0;background:none;width:24px;height:24px;border-radius:5px;display:grid;place-items:center;color:var(--muted);padding:0}
+.eye:hover,.solo:hover{background:var(--line);color:var(--fg)}
+.eye[aria-pressed="true"]{color:var(--accent)}
+.eye .off{display:none}
+.eye[aria-pressed="false"] .on{display:none}
+.eye[aria-pressed="false"] .off{display:block}
+.eye[aria-pressed="mixed"]{color:var(--fg)}
+input[type=color]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border:1px solid var(--line);border-radius:6px;padding:0;background:none;cursor:pointer;flex:none}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:5px}
+input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
+
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin:0;max-width:65ch}
+.note b{color:var(--fg);font-weight:500}
+
+@media (max-width:760px){
+  html,body{height:auto;overflow:auto}
+  .app{display:block;height:auto}
+  .viewer{height:58svh;min-height:320px}
+  .panel{border-right:0;border-top:1px solid var(--line);padding-right:max(16px,env(safe-area-inset-right,0px));overflow:visible}
+  .hud-tl{left:max(16px,env(safe-area-inset-left,0px))}
+  .hud-bl{left:max(16px,env(safe-area-inset-left,0px))}
+  .legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .status::before{animation:none}
+  .scale-bar,.chev svg,.sw input,.sw input::after{transition:none}
+}
+
+/* ---------- page tabs + quantum-number page ---------- */
+:root{ --sel:#1B2540; --pos:#7FB2FF; --neg:#F2A25C; }
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.tabs a{text-align:center;padding:7px 6px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:12.5px;font-weight:500}
+.tabs a:hover{color:var(--fg)}
+.tabs a[aria-current="page"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+
+.qtitle{background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:3px}
+.qname{font:700 30px/1.05 var(--f-display);font-stretch:85%;letter-spacing:.01em}
+.qname sub{font-size:.55em;vertical-align:-.15em;font-stretch:95%;font-weight:600;margin-left:1px}
+.qtuple{font:500 12px var(--f-mono);color:var(--muted);white-space:nowrap}
+.qtuple b{color:var(--fg);font-weight:500}
+
+.qquick{display:flex;gap:6px}
+.qquick input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 9px;font-family:var(--f-mono)}
+.qquick input[aria-invalid="true"]{border-color:var(--danger)}
+.qquick button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:0 12px;font-weight:500}
+.qquick button:hover{border-color:var(--accent)}
+.qhint{font-size:12px;color:var(--danger);margin-top:6px}
+.qhint:empty{display:none}
+
+.qnums{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.qrow{display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;align-items:start}
+.qlab{display:flex;flex-direction:column;gap:1px;padding-top:3px}
+.qlab b{font:700 20px/1 var(--f-display);font-style:italic;font-stretch:90%}
+.qlab b sub{font-size:.6em;font-style:normal}
+.qlab span{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.qcap{font-size:11.5px;color:var(--muted);margin-top:5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips button{min-width:36px;padding:4px 6px 5px;border:1px solid var(--line);border-radius:6px;background:var(--raise);font:500 14px/1.15 var(--f-mono);display:flex;flex-direction:column;align-items:center}
+.chips button small{font:500 10.5px var(--f-body);color:var(--muted)}
+.chips button:hover:not(:disabled){border-color:var(--accent)}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel);color:var(--accent)}
+.chips button[aria-pressed="true"] small{color:var(--accent)}
+.chips button:disabled{opacity:.28;cursor:not-allowed}
+
+.qboxes{display:flex;flex-wrap:wrap;row-gap:8px}
+.qbox{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;width:34px}
+.qbox .b{width:34px;height:30px;border:1px solid var(--line);background:var(--bg);display:grid;place-items:center;font:600 17px var(--f-mono);color:var(--accent)}
+.qbox + .qbox .b{margin-left:-1px;width:35px}
+.qbox:hover .b{border-color:var(--muted)}
+.qbox[aria-pressed="true"] .b{border-color:var(--accent);background:var(--sel);position:relative;z-index:1}
+.qbox small{font:500 10.5px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.qbox[aria-pressed="true"] small{color:var(--accent)}
+.qseg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;padding:3px;background:var(--bg);gap:3px;max-width:220px}
+.qseg button{border:0;background:none;border-radius:6px;padding:6px;color:var(--muted);font:500 13px var(--f-mono)}
+.qseg button[aria-pressed="true"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.qrules{font:400 11.5px var(--f-mono);color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+
+.readout{display:grid;grid-template-columns:auto minmax(0,1fr);gap:9px 14px;margin:0;font-size:13px}
+.readout dt{color:var(--muted);font-size:12.5px}
+.readout dd{margin:0;font:500 13px/1.35 var(--f-mono);overflow-wrap:anywhere;min-width:0;font-variant-numeric:tabular-nums}
+.readout dd sub{font-size:.75em}
+.readout dd small{display:block;font:400 11.5px/1.4 var(--f-body);color:var(--muted);margin-top:1px}
+
+.qchart{display:block;width:100%;height:170px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.qchart-cap{font-size:11.5px;color:var(--muted);margin-top:6px}
+.colors{display:flex;gap:16px;flex-wrap:wrap}
+.colors label{display:flex;align-items:center;gap:7px;font-size:13px}
+.legend i.pos{background:var(--pos)} .legend i.negc{background:var(--neg)}
+.legend i.wheel{border-radius:50%;background:conic-gradient(from 90deg,#f66,#fd6,#6f6,#6ff,#66f,#f6f,#f66)}
+
+/* ---------- periodic-trends page ---------- */
+.tabs{grid-template-columns:repeat(3,1fr)}
+.seg.four{grid-template-columns:repeat(4,1fr)}
+.seg.four button{padding:7px 3px;font-size:12px;line-height:1.2}
+.tprop{font:700 22px/1.1 var(--f-display);font-stretch:88%}
+.tlegend{background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:7px 10px 6px;display:flex;flex-direction:column;gap:5px;font:500 11.5px var(--f-mono);color:var(--muted);min-width:190px}
+.tlegend .ramp{height:9px;border-radius:2px}
+.tlegend .ends{display:flex;justify-content:space-between;gap:10px}
+.tlegend .keys{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--f-body)}
+.tlegend .keys span{display:flex;align-items:center;gap:5px}
+.tlegend .keys i{width:10px;height:10px;border-radius:2px;flex:none}
+.ttip{position:absolute;left:0;top:0;pointer-events:none;background:var(--glass);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:500 12px/1.4 var(--f-mono);white-space:nowrap;z-index:3;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.ttip b{font-weight:600;color:var(--fg)}
+.ttip span{color:var(--muted)}
+.tsel{position:absolute;left:0;top:0;font:700 13px var(--f-display);color:var(--bg);background:var(--accent);border-radius:4px;padding:1px 6px;transform:translate(-50%,-130%);will-change:transform;pointer-events:none;white-space:nowrap}
+.tcard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
+.tcard .tile{width:84px}
+.tcard .tile .sym{font-size:40px}
+.tval{font:600 22px/1.15 var(--f-mono);font-variant-numeric:tabular-nums}
+.tval small{font:500 12px var(--f-mono);color:var(--muted);margin-left:4px}
+.tval.na{font-size:15px;color:var(--muted);font-weight:500}
+.tmeta{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:4px}
+.tmeta b{color:var(--fg);font-weight:500}
+.thl{margin-top:12px}
+.thl .seg{grid-template-columns:repeat(3,1fr)}
+.thl .seg button{padding:6px 4px;font-size:12.5px}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+.tchart-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:14px 0 5px;font-size:12.5px}
+.tchart-h b{font-weight:600}
+.tchart-h span{font:500 11.5px var(--f-mono);color:var(--muted);text-align:right}
+.tchart{display:block;width:100%;height:138px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:crosshair;touch-action:pan-y}
+.tnote{font-size:12.5px;line-height:1.6;margin:0 0 10px;color:var(--fg)}
+.tnote b{font-weight:600}
+.tex{display:flex;flex-wrap:wrap;gap:6px}
+.tex button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:5px 9px;font-size:12px;text-align:left;line-height:1.3}
+.tex button:hover{border-color:var(--accent)}
+.tex button small{display:block;color:var(--muted);font-size:11px}
+</style>
+
+<div class="app" id="elApp">
+  <main class="viewer" id="viewer">
+    <canvas class="bohr" id="bohr" hidden></canvas>
+    <div class="labels" id="labels"></div>
+    <div class="pt" id="pt" role="dialog" aria-label="Periodic table" hidden>
+      <div class="pt-head">
+        <h2>Periodic table</h2>
+        <div class="pt-info" id="ptInfo">Click an element to load it</div>
+        <div class="pt-legend"><span><i style="background:var(--bk-s)"></i>s</span><span><i style="background:var(--bk-p)"></i>p</span><span><i style="background:var(--bk-d)"></i>d</span><span><i style="background:var(--bk-f)"></i>f</span></div>
+        <button type="button" class="hbtn" id="ptClose">Close</button>
+      </div>
+      <div class="pt-scroll"><div class="pt-grid" id="ptGrid"></div></div>
+    </div>
+    <div class="hud hud-tl">
+      <div class="chip" id="modeChip"></div>
+      <div class="chip status" id="status" hidden></div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="hbtn" id="fitBtn" type="button">Fit view</button>
+      <button class="hbtn" id="resetBtn" type="button">Reset view</button>
+    </div>
+    <div class="hud hud-bl">
+      <div class="scale"><span id="scaleTxt">1 Å</span><div class="scale-bar" id="scaleBar"></div></div>
+    </div>
+    <div class="hud hud-br">
+      <div class="legend" id="legend"><span><i></i>ψ &gt; 0</span><span><i class="neg"></i>ψ &lt; 0</span></div>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a></nav>
+    <header class="brand">
+      <h1>Atomic Orbital Viewer</h1>
+      <p>Hydrogen-like wavefunctions · Slater effective charge · ground-state configuration</p>
+    </header>
+
+    <section aria-label="Element">
+      <h2 class="sec-h"><span>Element</span><button type="button" class="ptbtn" id="ptOpen" aria-haspopup="dialog">Periodic table</button></h2>
+      <div class="el">
+        <div class="tile"><span class="z" id="elZ"></span><span class="sym" id="elSym"></span><span class="cn" id="elName"></span></div>
+        <div class="el-meta">
+          <div class="cfg" id="elCfg"></div>
+          <div class="facts" id="elFacts"></div>
+          <div class="zrow">
+            <button type="button" id="prevZ" aria-label="Previous element">‹</button>
+            <input id="zInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" aria-label="Atomic number, symbol or name" placeholder="26 / Fe / Iron">
+            <button type="button" id="nextZ" aria-label="Next element">›</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint" id="zHint"></div>
+      <input type="range" id="zRange" min="1" max="118" step="1" aria-label="Atomic number">
+      <div class="erow">
+        <button type="button" id="eMinus" aria-label="Remove one electron">− e⁻</button>
+        <div class="ecount" id="eCount" aria-live="polite"></div>
+        <button type="button" id="ePlus" aria-label="Add one electron">+ e⁻</button>
+        <button type="button" id="eNeutral" class="neutral">Neutral</button>
+      </div>
+    </section>
+
+    <section aria-label="Display mode">
+      <h2 class="sec-h">Display mode</h2>
+      <div class="seg three" role="radiogroup" aria-label="Display mode" id="elMode">
+        <button type="button" role="radio" id="modeLobe" data-mode="lobe">Lobes</button>
+        <button type="button" role="radio" id="modeCloud" data-mode="cloud">Electron cloud</button>
+        <button type="button" role="radio" id="modeBohr" data-mode="bohr">Bohr model</button>
+      </div>
+    </section>
+
+    <section aria-label="Display settings" class="ctl">
+      <div class="slider" id="levelCtl">
+        <label for="level"><span>Isosurface probability</span><output id="levelOut"></output></label>
+        <input type="range" id="level" min="50" max="95" step="5">
+      </div>
+      <div class="slider" id="densityCtl">
+        <label for="density"><span>Cloud density</span><output id="densityOut"></output></label>
+        <input type="range" id="density" min="0.3" max="3" step="0.1">
+      </div>
+      <div class="slider" id="psizeCtl">
+        <label for="psize"><span>Point size</span><output id="psizeOut"></output></label>
+        <input type="range" id="psize" min="0.5" max="3" step="0.1">
+      </div>
+      <div class="slider">
+        <label for="opacity"><span>Opacity</span><output id="opacityOut"></output></label>
+        <input type="range" id="opacity" min="0.15" max="1" step="0.05">
+      </div>
+      <div class="toggles">
+        <label class="sw"><input type="checkbox" id="tPhase">Phase colors</label>
+        <label class="sw"><input type="checkbox" id="tLabels">Labels</label>
+        <label class="sw"><input type="checkbox" id="tAxes">Axes</label>
+        <label class="sw"><input type="checkbox" id="tSpin">Auto-rotate</label>
+        <label class="sw"><input type="checkbox" id="tFit">Auto-zoom</label>
+      </div>
+    </section>
+
+    <section aria-label="Orbitals">
+      <h2 class="sec-h"><span>Orbitals</span>
+        <span class="bulk">
+          <button type="button" id="bValence">Valence</button>
+          <button type="button" id="bOcc">All occupied</button>
+          <button type="button" id="bNone">Hide all</button>
+        </span>
+      </h2>
+      <p class="ecap"><b>Listed in filling order</b> (Aufbau, n + l rule).</p>
+      <div class="olist" id="olist"></div>
+    </section>
+
+    <p class="note"><b>About the model.</b> Each orbital is a hydrogen-like wavefunction ψ = R<sub>nl</sub>(r)·Y<sub>lm</sub>(θ,φ) using real spherical harmonics, with the effective nuclear charge Z* from Slater’s rules, so sizes are comparable across subshells and elements. <b>Lobes</b> are the |ψ| isosurface enclosing the chosen share of electron density; the <b>electron cloud</b> is random points drawn from |ψ|². Bright and dark shades mark the positive and negative phase of ψ. Arrows in the boxes follow Hund’s rule.</p>
+  </aside>
+</div>
+
+<div class="app" id="qApp" hidden>
+  <main class="viewer" id="qViewer">
+    <div class="labels" id="qLabels"></div>
+    <div class="hud hud-tl">
+      <div class="qtitle"><div class="qname" id="qName"></div><div class="qtuple" id="qTuple"></div></div>
+      <div class="chip" id="qModeChip"></div>
+      <div class="chip status" id="qStatus" hidden></div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="hbtn" id="qFit" type="button">Fit view</button>
+      <button class="hbtn" id="qReset" type="button">Reset view</button>
+    </div>
+    <div class="hud hud-bl">
+      <div class="scale"><span id="qScaleTxt">1 Å</span><div class="scale-bar" id="qScaleBar"></div></div>
+    </div>
+    <div class="hud hud-br"><div class="legend" id="qLegend"></div></div>
+  </main>
+
+  <aside class="panel">
+    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a></nav>
+    <header class="brand">
+      <h1>Quantum Number Explorer</h1>
+      <p>Pick n, l, mₗ and mₛ to draw one hydrogen-like orbital</p>
+    </header>
+
+    <section aria-label="Quantum numbers">
+      <h2 class="sec-h">Quantum numbers</h2>
+      <form class="qquick" id="qForm">
+        <input id="qQuick" type="text" autocomplete="off" spellcheck="false" aria-label="Type an orbital or quantum numbers" placeholder="3d xy · 4f · 3 2 -1 +1/2">
+        <button type="submit">Draw</button>
+      </form>
+      <div class="qhint" id="qHint" role="alert"></div>
+      <div class="qnums">
+        <div class="qrow">
+          <div class="qlab"><b>n</b><span>principal</span></div>
+          <div><div class="chips" id="qN"></div><div class="qcap">Shell: sets size and energy</div></div>
+        </div>
+        <div class="qrow">
+          <div class="qlab"><b>l</b><span>azimuthal</span></div>
+          <div><div class="chips" id="qL"></div><div class="qcap" id="qLcap"></div></div>
+        </div>
+        <div class="qrow">
+          <div class="qlab"><b>m<sub>l</sub></b><span>magnetic</span></div>
+          <div><div class="qboxes" id="qM"></div><div class="qcap" id="qMcap"></div></div>
+        </div>
+        <div class="qrow">
+          <div class="qlab"><b>m<sub>s</sub></b><span>spin</span></div>
+          <div><div class="qseg" id="qMs"><button type="button" data-ms="1">+½ ↑</button><button type="button" data-ms="-1">−½ ↓</button></div><div class="qcap">Spin does not change the spatial shape</div></div>
+        </div>
+        <div class="slider">
+          <label for="qZ"><span>Nuclear charge Z</span><output id="qZOut"></output></label>
+          <input type="range" id="qZ" min="1" max="20" step="1">
+        </div>
+        <div class="qrules">n = 1…7 · l = 0…n−1 · mₗ = −l…+l · mₛ = ±½</div>
+      </div>
+    </section>
+
+    <section aria-label="This orbital">
+      <h2 class="sec-h">This orbital</h2>
+      <dl class="readout" id="qRead"></dl>
+    </section>
+
+    <section aria-label="Radial distribution">
+      <h2 class="sec-h">Radial distribution r²R²(r)</h2>
+      <canvas class="qchart" id="qChart"></canvas>
+      <div class="qchart-cap">Probability of finding the electron at distance r from the nucleus. Dashed lines are radial nodes.</div>
+    </section>
+
+    <section aria-label="Display" class="ctl">
+      <h2 class="sec-h">Display</h2>
+      <div class="seg" role="group" aria-label="Wavefunction form" id="qForm2">
+        <button type="button" data-form="real" title="Real combinations of ±mₗ: px, dxy… (the shapes in textbooks)">Real orbitals</button>
+        <button type="button" data-form="complex" title="Eigenstates of Lz with definite mₗ; color shows the phase e^(i·mₗ·φ)">Complex (definite mₗ)</button>
+      </div>
+      <div class="seg" role="group" aria-label="Display mode" id="qMode">
+        <button type="button" data-mode="lobe">Lobes</button>
+        <button type="button" data-mode="cloud">Electron cloud</button>
+      </div>
+      <div class="slider" id="qLevelCtl">
+        <label for="qLevel"><span>Isosurface probability</span><output id="qLevelOut"></output></label>
+        <input type="range" id="qLevel" min="50" max="95" step="5">
+      </div>
+      <div class="slider" id="qDensityCtl">
+        <label for="qDensity"><span>Cloud density</span><output id="qDensityOut"></output></label>
+        <input type="range" id="qDensity" min="0.3" max="3" step="0.1">
+      </div>
+      <div class="slider">
+        <label for="qOpacity"><span>Opacity</span><output id="qOpacityOut"></output></label>
+        <input type="range" id="qOpacity" min="0.15" max="1" step="0.05">
+      </div>
+      <div class="colors" id="qColors">
+        <label><input type="color" id="qCPos">ψ &gt; 0</label>
+        <label><input type="color" id="qCNeg">ψ &lt; 0</label>
+      </div>
+      <div class="toggles">
+        <label class="sw"><input type="checkbox" id="qAxes">Axes</label>
+        <label class="sw"><input type="checkbox" id="qSpin">Auto-rotate</label>
+        <label class="sw"><input type="checkbox" id="qCut">Cutaway (x &gt; 0)</label>
+      </div>
+    </section>
+
+    <p class="note"><b>How to read it.</b> ψ<sub>nlm</sub> = R<sub>nl</sub>(r)·Y<sub>l</sub><sup>m</sup>(θ,φ) for a one-electron atom with nuclear charge Z. <b>n</b> sets the size and energy, <b>l</b> the shape (s, p, d, f…), <b>mₗ</b> the orientation. <b>Real orbitals</b> mix +mₗ and −mₗ into the familiar p<sub>x</sub>, d<sub>xy</sub> shapes, colored by the sign of ψ. <b>Complex orbitals</b> have a definite mₗ; |ψ|² is symmetric around z and the color wheel shows the phase, which winds mₗ times around the axis. Use <b>Cutaway</b> to see inner shells from radial nodes.</p>
+  </aside>
+</div>
+
+<div class="app" id="tApp" hidden>
+  <main class="viewer" id="tViewer">
+    <div class="labels" id="tLabels"><div class="tsel" id="tSel" hidden></div></div>
+    <div class="hud hud-tl">
+      <div class="qtitle"><div class="tprop" id="tTitle"></div><div class="qtuple" id="tSub"></div></div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="hbtn" id="tReset" type="button">Reset view</button>
+    </div>
+    <div class="hud hud-br"><div class="tlegend" id="tLegend"></div></div>
+    <div class="ttip" id="tTip" hidden></div>
+  </main>
+
+  <aside class="panel">
+    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a></nav>
+    <header class="brand">
+      <h1>Periodic Trends</h1>
+      <p>Each element is a bar; its height is the property value. Drag to rotate, click a bar to inspect.</p>
+    </header>
+
+    <section aria-label="Property">
+      <h2 class="sec-h">Property</h2>
+      <div class="seg three" role="radiogroup" aria-label="Property" id="tProp">
+        <button type="button" role="radio" data-p="radius">Atomic radius</button>
+        <button type="button" role="radio" data-p="ie">Ionization energy</button>
+        <button type="button" role="radio" data-p="ea">Electron affinity</button>
+      </div>
+    </section>
+
+    <section aria-label="View" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0">View</h2>
+      <div class="seg four" role="radiogroup" aria-label="Camera view" id="tView">
+        <button type="button" role="radio" data-v="3d">3D</button>
+        <button type="button" role="radio" data-v="front">Across a period</button>
+        <button type="button" role="radio" data-v="side">Down a group</button>
+        <button type="button" role="radio" data-v="top">Top (heat map)</button>
+      </div>
+      <div class="toggles">
+        <label class="sw"><input type="checkbox" id="tBlock">Color by block</label>
+        <label class="sw"><input type="checkbox" id="tSpin">Auto-rotate</label>
+      </div>
+    </section>
+
+    <section aria-label="Selected element">
+      <h2 class="sec-h">Selected element</h2>
+      <div class="tcard">
+        <div class="tile"><span class="z" id="tZ"></span><span class="sym" id="tSym"></span><span class="cn" id="tName"></span></div>
+        <div>
+          <div class="tval" id="tVal"></div>
+          <div class="tmeta" id="tMeta"></div>
+        </div>
+      </div>
+      <div class="thl">
+        <div class="seg" role="radiogroup" aria-label="Highlight" id="tHl">
+          <button type="button" role="radio" data-h="none">No highlight</button>
+          <button type="button" role="radio" data-h="period" id="tHlP">Period</button>
+          <button type="button" role="radio" data-h="group" id="tHlG">Group</button>
+        </div>
+      </div>
+      <div class="tchart-h"><b id="tPcap">Period</b><span id="tPread"></span></div>
+      <canvas class="tchart" id="tPchart" aria-label="Values across the period"></canvas>
+      <div class="tchart-h"><b id="tGcap">Group</b><span id="tGread"></span></div>
+      <canvas class="tchart" id="tGchart" aria-label="Values down the group"></canvas>
+    </section>
+
+    <section aria-label="Trend">
+      <h2 class="sec-h">What to look for</h2>
+      <p class="tnote" id="tNote"></p>
+      <div class="tex" id="tEx"></div>
+    </section>
+
+    <p class="note" id="tSrc"></p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script id="core">
+/* ===== physics core (no DOM) ===== */
+const A0 = 0.529177; // Bohr radius in Å
+const LETTERS = 'spdf';
+const SYM = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(' ');
+const EN = "Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon Sodium Magnesium Aluminium Silicon Phosphorus Sulfur Chlorine Argon Potassium Calcium Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper Zinc Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium Yttrium Zirconium Niobium Molybdenum Technetium Ruthenium Rhodium Palladium Silver Cadmium Indium Tin Antimony Tellurium Iodine Xenon Caesium Barium Lanthanum Cerium Praseodymium Neodymium Promethium Samarium Europium Gadolinium Terbium Dysprosium Holmium Erbium Thulium Ytterbium Lutetium Hafnium Tantalum Tungsten Rhenium Osmium Iridium Platinum Gold Mercury Thallium Lead Bismuth Polonium Astatine Radon Francium Radium Actinium Thorium Protactinium Uranium Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium Meitnerium Darmstadtium Roentgenium Copernicium Nihonium Flerovium Moscovium Livermorium Tennessine Oganesson".split(' ');
+const CN = Array.from("氢氦锂铍硼碳氮氧氟氖钠镁铝硅磷硫氯氩钾钙钪钛钒铬锰铁钴镍铜锌镓锗砷硒溴氪铷锶钇锆铌钼锝钌铑钯银镉铟锡锑碲碘氙铯钡镧铈镨钕钷钐铕钆铽镝钬铒铥镱镥铪钽钨铼锇铱铂金汞铊铅铋钋砹氡钫镭锕钍镤铀镎钚镅锔锫锎锿镄钔锘铹𬬻𬭊𬭳𬭛𬭶鿏𫟼𬬭鎶鉨𫓧镆𫟷鿬鿫");
+const NOBLE = [2, 10, 18, 36, 54, 86, 118];
+// known ground-state exceptions to the Madelung order (electron moves)
+const EXC = {
+  24:{'4s':-1,'3d':1}, 29:{'4s':-1,'3d':1},
+  41:{'5s':-1,'4d':1}, 42:{'5s':-1,'4d':1}, 44:{'5s':-1,'4d':1}, 45:{'5s':-1,'4d':1}, 46:{'5s':-2,'4d':2}, 47:{'5s':-1,'4d':1},
+  57:{'4f':-1,'5d':1}, 58:{'4f':-1,'5d':1}, 64:{'4f':-1,'5d':1},
+  78:{'6s':-1,'5d':1}, 79:{'6s':-1,'5d':1},
+  89:{'5f':-1,'6d':1}, 90:{'5f':-2,'6d':2}, 91:{'5f':-1,'6d':1}, 92:{'5f':-1,'6d':1}, 93:{'5f':-1,'6d':1}, 96:{'5f':-1,'6d':1},
+  103:{'6d':-1,'7p':1}
+};
+const SUBS = (() => { const a = []; for (let n = 1; n <= 7; n++) for (let l = 0; l < Math.min(n, 4); l++) a.push({n, l}); a.sort((p, q) => (p.n + p.l) - (q.n + q.l) || p.n - q.n); return a; })();
+const parseKey = k => ({n: +k[0], l: LETTERS.indexOf(k[1])});
+function configOf(Z) {
+  const cfg = new Map(); let left = Z;
+  for (const s of SUBS) { if (left <= 0) break; const cap = 2 * (2 * s.l + 1), e = Math.min(cap, left); cfg.set(s.n + LETTERS[s.l], e); left -= e; }
+  const ex = EXC[Z]; if (ex) for (const k in ex) cfg.set(k, (cfg.get(k) || 0) + ex[k]);
+  for (const [k, v] of [...cfg]) if (v <= 0) cfg.delete(k);
+  return cfg;
+}
+function displayKeys(cfg) { return [...cfg.keys()].sort((a, b) => { const A = parseKey(a), B = parseKey(b); return A.n - B.n || A.l - B.l; }); }
+function slaterZeff(Z, cfg, key) {
+  const me = parseKey(key); const grp = o => o.l <= 1 ? o.n * 3 : o.n * 3 + (o.l - 1); const G = grp(me);
+  let S = 0;
+  for (const [k, e] of cfg) {
+    const o = parseKey(k), Go = grp(o); const cnt = k === key ? e - 1 : e;
+    if (Go === G) S += cnt * (me.n === 1 ? 0.30 : 0.35);
+    else if (Go < G) S += cnt * (me.l <= 1 ? (o.n === me.n - 1 ? 0.85 : 1.0) : 1.0);
+  }
+  return Math.max(1, Z - S);
+}
+function laguerre(deg, alpha) {
+  return x => { if (deg === 0) return 1; let L0 = 1, L1 = 1 + alpha - x; for (let i = 1; i < deg; i++) { const L2 = ((2 * i + 1 + alpha - x) * L1 - (i + alpha) * L0) / (i + 1); L0 = L1; L1 = L2; } return L1; };
+}
+// real spherical harmonics, as Cartesian polynomials (r^l · Y), constants dropped
+const ANG = [
+  [{s:'', f:(x,y,z)=>1}],
+  [{s:'x', f:(x,y,z)=>x}, {s:'y', f:(x,y,z)=>y}, {s:'z', f:(x,y,z)=>z}],
+  [{s:'z²', f:(x,y,z)=>2*z*z-x*x-y*y}, {s:'xz', f:(x,y,z)=>x*z}, {s:'yz', f:(x,y,z)=>y*z}, {s:'xy', f:(x,y,z)=>x*y}, {s:'x²−y²', f:(x,y,z)=>x*x-y*y}],
+  [{s:'z³', f:(x,y,z)=>z*(2*z*z-3*x*x-3*y*y)}, {s:'xz²', f:(x,y,z)=>x*(4*z*z-x*x-y*y)}, {s:'yz²', f:(x,y,z)=>y*(4*z*z-x*x-y*y)},
+   {s:'xyz', f:(x,y,z)=>x*y*z}, {s:'z(x²−y²)', f:(x,y,z)=>z*(x*x-y*y)}, {s:'x(x²−3y²)', f:(x,y,z)=>x*(x*x-3*y*y)}, {s:'y(3x²−y²)', f:(x,y,z)=>y*(3*x*x-y*y)}]
+];
+function makeModel(n, l, mi, Zeff) {
+  const k = 2 * Zeff / (n * A0), kl = Math.pow(k, l), lag = laguerre(n - l - 1, 2 * l + 1), P = ANG[l][mi].f;
+  return {n, l, mi, Zeff, k, lag, P,
+    psi: (x, y, z) => { const rho = k * Math.sqrt(x*x + y*y + z*z); return Math.exp(-0.5 * rho) * lag(rho) * kl * P(x, y, z); },
+    radial: r => { const rho = k * r; return Math.exp(-0.5 * rho) * Math.pow(rho, l) * lag(rho); }};
+}
+const FIB = (() => { const a = [], N = 2500, g = Math.PI * (3 - Math.sqrt(5)); for (let i = 0; i < N; i++) { const z = 1 - 2 * (i + .5) / N, s = Math.sqrt(1 - z*z); a.push([s * Math.cos(g * i), s * Math.sin(g * i), z]); } return a; })();
+const CANDS = [[1,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0],[1,0,1],[0,1,1],[-1,0,0],[0,-1,0],[0,0,-1],[1,-1,0],[-1,1,0]].map(v => { const m = Math.hypot(...v); return v.map(c => c / m); });
+function prepare(m) {
+  if (m.cdf) return;
+  // radial distribution r²R² → CDF
+  const M = 3000, rEnd = A0 * (4 * m.n * m.n + 12 * m.n) / m.Zeff, dr = rEnd / M, cdf = new Float64Array(M + 1);
+  let acc = 0; for (let i = 1; i <= M; i++) { const r = (i - .5) * dr, R = m.radial(r); acc += r * r * R * R * dr; cdf[i] = acc; }
+  for (let i = 1; i <= M; i++) cdf[i] /= acc;
+  m.cdf = cdf; m.dr = dr;
+  m.rAt = p => { let lo = 1, hi = M; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < p) lo = mid + 1; else hi = mid; } const a = cdf[lo - 1], b = cdf[lo]; return (lo - 1 + (b > a ? (p - a) / (b - a) : 0)) * dr; };
+  m.L = m.rAt(0.998);
+  // angular extremes
+  let mx = 0; for (const d of FIB) mx = Math.max(mx, Math.abs(m.P(d[0], d[1], d[2])));
+  let best = CANDS[0], bv = -1; const all = CANDS.concat(FIB); for (const d of all) bv = Math.max(bv, Math.abs(m.P(d[0], d[1], d[2])));
+  for (const d of all) { if (Math.abs(m.P(d[0], d[1], d[2])) >= 0.985 * bv) { best = d; break; } }
+  m.ang2 = Math.max(mx, bv) ** 2 * 1.02; m.dir = best;
+}
+// Slater's effective principal quantum numbers (n=7 extrapolated)
+const NSTAR = [0, 1, 2, 3, 3.7, 4.0, 4.2, 4.3];
+const slaterEnergy = (n, Zeff) => -13.6057 * (Zeff / NSTAR[n]) ** 2;
+const GRID = 64;
+const LEVELS = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+function computeGrid(m) {
+  prepare(m);
+  const N = GRID, N1 = N + 1, L = m.L, h = 2 * L / N, vals = new Float32Array(N1 * N1 * N1);
+  let p = 0;
+  for (let k = 0; k < N1; k++) { const z = -L + k * h; for (let j = 0; j < N1; j++) { const y = -L + j * h; for (let i = 0; i < N1; i++) vals[p++] = m.psi(-L + i * h, y, z); } }
+  if (!m.th) {
+    const sq = new Float32Array(vals.length); let tot = 0; for (let i = 0; i < vals.length; i++) { sq[i] = vals[i] * vals[i]; tot += sq[i]; }
+    sq.sort(); const th = {}; let acc = 0, li = 0;
+    for (let i = sq.length - 1; i >= 0 && li < LEVELS.length; i--) { acc += sq[i]; while (li < LEVELS.length && acc >= LEVELS[li] / 100 * tot) { th[LEVELS[li]] = Math.sqrt(sq[i]); li++; } }
+    m.th = th;
+  }
+  return {vals, N, L, h};
+}
+function gradients(g) {
+  const {vals, N, h} = g, N1 = N + 1, s1 = N1, s2 = N1 * N1, n = vals.length;
+  const gx = new Float32Array(n), gy = new Float32Array(n), gz = new Float32Array(n);
+  for (let k = 0; k < N1; k++) for (let j = 0; j < N1; j++) for (let i = 0; i < N1; i++) {
+    const id = i + j * s1 + k * s2;
+    const xm = i > 0 ? id - 1 : id, xp = i < N ? id + 1 : id;
+    const ym = j > 0 ? id - s1 : id, yp = j < N ? id + s1 : id;
+    const zm = k > 0 ? id - s2 : id, zp = k < N ? id + s2 : id;
+    gx[id] = (vals[xp] - vals[xm]) / ((xp - xm) * h);
+    gy[id] = (vals[yp] - vals[ym]) / ((yp - ym) / s1 * h);
+    gz[id] = (vals[zp] - vals[zm]) / ((zp - zm) / s2 * h);
+  }
+  g.gx = gx; g.gy = gy; g.gz = gz;
+}
+const OFF = [[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
+const TET = [[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
+// marching tetrahedra on the field sgn·ψ − c (inside = positive)
+function polygonize(g, c, sgn) {
+  const {vals, gx, gy, gz, N, L, h} = g, N1 = N + 1, s1 = N1, s2 = N1 * N1;
+  const cOff = OFF.map(o => o[0] + o[1] * s1 + o[2] * s2);
+  const f = new Float64Array(8), id = new Int32Array(8), V = new Float64Array(24);
+  const pos = [], nrm = [];
+  let x0 = 0, y0 = 0, z0 = 0;
+  const vert = (slot, a, b) => {
+    const t = f[a] / (f[a] - f[b]), oa = OFF[a], ob = OFF[b], o = slot * 6, ia = id[a], ib = id[b];
+    V[o] = x0 + (oa[0] + t * (ob[0] - oa[0])) * h; V[o+1] = y0 + (oa[1] + t * (ob[1] - oa[1])) * h; V[o+2] = z0 + (oa[2] + t * (ob[2] - oa[2])) * h;
+    const nx = -sgn * (gx[ia] + t * (gx[ib] - gx[ia])), ny = -sgn * (gy[ia] + t * (gy[ib] - gy[ia])), nz = -sgn * (gz[ia] + t * (gz[ib] - gz[ia]));
+    const m = Math.hypot(nx, ny, nz) || 1; V[o+3] = nx / m; V[o+4] = ny / m; V[o+5] = nz / m;
+  };
+  const tri = (a, b, cc) => {
+    const A = a * 6, B = b * 6, C = cc * 6;
+    const ux = V[B]-V[A], uy = V[B+1]-V[A+1], uz = V[B+2]-V[A+2], vx = V[C]-V[A], vy = V[C+1]-V[A+1], vz = V[C+2]-V[A+2];
+    const nx = uy*vz-uz*vy, ny = uz*vx-ux*vz, nz = ux*vy-uy*vx;
+    const d = nx*(V[A+3]+V[B+3]+V[C+3]) + ny*(V[A+4]+V[B+4]+V[C+4]) + nz*(V[A+5]+V[B+5]+V[C+5]);
+    const ord = d >= 0 ? [A, B, C] : [A, C, B];
+    for (const o of ord) { pos.push(V[o], V[o+1], V[o+2]); nrm.push(V[o+3], V[o+4], V[o+5]); }
+  };
+  const ins = [0,0,0,0], out = [0,0,0,0];
+  for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const base = i + j * s1 + k * s2; let inside = 0;
+    for (let q = 0; q < 8; q++) { const ix = base + cOff[q]; id[q] = ix; const v = sgn * vals[ix] - c; f[q] = v; if (v > 0) inside++; }
+    if (inside === 0 || inside === 8) continue;
+    x0 = -L + i * h; y0 = -L + j * h; z0 = -L + k * h;
+    for (const T of TET) {
+      let ni = 0, no = 0; for (const q of T) { if (f[q] > 0) ins[ni++] = q; else out[no++] = q; }
+      if (ni === 0 || ni === 4) continue;
+      if (ni === 1) { vert(0, ins[0], out[0]); vert(1, ins[0], out[1]); vert(2, ins[0], out[2]); tri(0, 1, 2); }
+      else if (ni === 3) { vert(0, out[0], ins[0]); vert(1, out[0], ins[1]); vert(2, out[0], ins[2]); tri(0, 1, 2); }
+      else { vert(0, ins[0], out[0]); vert(1, ins[0], out[1]); vert(2, ins[1], out[1]); vert(3, ins[1], out[0]); tri(0, 1, 2); tri(0, 2, 3); }
+    }
+  }
+  return {pos: new Float32Array(pos), nrm: new Float32Array(nrm)};
+}
+function sampleCloud(m, count) {
+  prepare(m);
+  const P = new Float32Array(count * 3), S = new Int8Array(count); let n = 0, guard = 0;
+  while (n < count && guard < count * 600) {
+    guard++;
+    const z = 2 * Math.random() - 1, ph = 2 * Math.PI * Math.random(), s = Math.sqrt(1 - z * z), x = s * Math.cos(ph), y = s * Math.sin(ph);
+    const a = m.P(x, y, z); if (a * a < Math.random() * m.ang2) continue;
+    const r = m.rAt(Math.random() * 0.9995);
+    P[3*n] = x * r; P[3*n+1] = y * r; P[3*n+2] = z * r;
+    S[n] = a * m.lag(m.k * r) >= 0 ? 1 : -1; n++;
+  }
+  return {P: P.subarray(0, n * 3), S: S.subarray(0, n), n};
+}
+function anchorRadius(m, c) {
+  const d = m.dir, steps = 400, top = m.L * 1.2;
+  for (let s = steps; s > 0; s--) { const r = top * s / steps; if (Math.abs(m.psi(d[0]*r, d[1]*r, d[2]*r)) >= c) return r; }
+  return m.rAt(0.5);
+}
+if (typeof module !== 'undefined') module.exports = {SYM, CN, configOf, displayKeys, slaterZeff, makeModel, computeGrid, gradients, polygonize, sampleCloud, anchorRadius, prepare, ANG};
+</script>
+
+<script>
+/* ===== app ===== */
+const $ = s => document.querySelector(s);
+const SUP = s => String(s).replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+const state = {Z: 26, mode: 'lobe', level: 90, opacity: 0.8, density: 1, psize: 1.2, phase: true, labels: true, axes: true, spin: false, autofit: true};
+try { const s = JSON.parse(store.get('orbital-viewer') || '{}'); Object.assign(state, s); } catch (e) {}
+const save = () => store.set('orbital-viewer', JSON.stringify(state));
+const BASE_POINTS = 6000;
+
+/* ---------- three.js scene ---------- */
+const viewer = $('#viewer'), labelsLayer = $('#labels');
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+viewer.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.001, 1000);
+const HOME_DIR = new THREE.Vector3(1.25, 0.95, 1.7).normalize();
+camera.position.copy(HOME_DIR).multiplyScalar(4);
+scene.add(camera);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotateSpeed = 1.4; controls.minDistance = 0.002; controls.maxDistance = 800;
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f2a, 0.75));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.8); keyLight.position.set(1, 1.5, 2); camera.add(keyLight);
+const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
+const nucleus = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({color: 0xF2C46D}));
+scene.add(nucleus);
+const axes = new THREE.LineSegments(
+  new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([-1,0,0,1,0,0, 0,-1,0,0,1,0, 0,0,-1,0,0,1], 3)),
+  new THREE.LineBasicMaterial({color: 0x3b4556, transparent: true, opacity: 0.9}));
+scene.add(axes);
+const axLabels = ['x', 'y', 'z'].map((t, i) => { const el = document.createElement('div'); el.className = 'axlabel'; el.textContent = t; labelsLayer.appendChild(el); return {el, v: new THREE.Vector3(i===0?1:0, i===1?1:0, i===2?1:0)}; });
+let axisLen = 1;
+
+const dotTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.45,'rgba(255,255,255,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+
+function resize() {
+  const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(viewer); resize();
+
+/* ---------- colors ---------- */
+const HUES = [[355], [205, 135, 38], [275, 185, 95, 18, 320], [0, 32, 58, 165, 212, 248, 298]];
+function defaultColor(n, l, mi) { const h = (HUES[l][mi] + (n - l - 1) * 16) % 360; return '#' + new THREE.Color().setHSL(h / 360, 0.72, Math.max(0.5, 0.64 - (n - l - 1) * 0.025)).getHexString(); }
+function phaseColors(hex) {
+  const pos = new THREE.Color(hex); if (!state.phase) return [pos, pos.clone()];
+  const hsl = {}; pos.getHSL(hsl); const neg = new THREE.Color().setHSL(hsl.h, hsl.s * 0.8, hsl.l * 0.4); return [pos, neg];
+}
+
+/* ---------- orbitals ---------- */
+let orbitals = [], cfg = null;
+function orbLabel(o) { return o.l === 0 ? `${o.n}s` : `${o.n}${LETTERS[o.l]}<sub>${ANG[o.l][o.mi].s}</sub>`; }
+
+// electrons allowed: at least 1, at most 4 extra (anions), and no further than 7p can hold
+const MAX_ANION = 4;
+const eRange = Z => [1, Math.min(Z + MAX_ANION, 118)];
+// ion configuration: remove from the highest n (then highest l) first, e.g. 4s before 3d;
+// add electrons in Aufbau order to the first subshell that is not full
+function ionConfig(Z, charge) {
+  const c = configOf(Z);
+  for (let i = 0; i < charge; i++) {
+    let best = null;
+    for (const k of c.keys()) { const p = parseKey(k); if (!best || p.n > best.n || (p.n === best.n && p.l > best.l)) best = {...p, k}; }
+    if (!best) break;
+    const v = c.get(best.k) - 1; if (v > 0) c.set(best.k, v); else c.delete(best.k);
+  }
+  for (let i = 0; i < -charge; i++) {
+    const s = SUBS.find(s => (c.get(s.n + LETTERS[s.l]) || 0) < 2 * (2 * s.l + 1)); if (!s) break;
+    const k = s.n + LETTERS[s.l]; c.set(k, (c.get(k) || 0) + 1);
+  }
+  return c;
+}
+function setCharge(ch) {
+  const [lo, hi] = eRange(state.Z), N = Math.max(lo, Math.min(hi, state.Z - ch));
+  setElement(state.Z, {charge: state.Z - N});
+}
+function setElement(Z, opts = {}) {
+  Z = Math.max(1, Math.min(118, Z | 0)); state.Z = Z;
+  const [lo, hi] = eRange(Z); state.charge = Z - Math.max(lo, Math.min(hi, Z - (opts.charge || 0)));
+  save();
+  for (const o of orbitals) disposeOrb(o);
+  queue.length = 0;
+  cfg = ionConfig(Z, state.charge);
+  const E = new Map([...cfg.keys()].map(k => [k, slaterEnergy(+k[0], slaterZeff(Z, cfg, k))]));
+  // electron filling order (Aufbau / Madelung n + l rule): 1s 2s 2p 3s 3p 4s 3d 4p ...
+  const fillIdx = k => { const p = parseKey(k); return SUBS.findIndex(s => s.n === p.n && s.l === p.l); };
+  const keys = [...cfg.keys()].sort((a, b) => fillIdx(a) - fillIdx(b));
+  const nmax = Math.max(...keys.map(k => +k[0]));
+  orbitals = [];
+  for (const key of keys) {
+    const {n, l} = parseKey(key), e = cfg.get(key), k = 2 * l + 1, Zeff = slaterZeff(Z, cfg, key);
+    const valence = n === nmax || e < 2 * k;
+    for (let mi = 0; mi < k; mi++) {
+      const occ = (mi < Math.min(e, k) ? 1 : 0) + (mi < e - k ? 1 : 0);
+      orbitals.push({key, n, l, mi, e: occ, subE: e, Zeff, E: E.get(key), color: defaultColor(n, l, mi), visible: valence && occ > 0, valence, model: makeModel(n, l, mi, Zeff), lobe: null, cloud: null, labelEl: null});
+    }
+  }
+  renderElement(); renderList(); fitPending = true; snapFit = !!opts.snap;
+  if (state.mode === 'bohr') renderModeUI();
+  schedule();
+}
+function disposeObj(obj) { if (!obj) return; scene.remove(obj); obj.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+function disposeOrb(o) { if (o.lobe) disposeObj(o.lobe.group); if (o.cloud) disposeObj(o.cloud.points); o.lobe = o.cloud = null; if (o.labelEl) o.labelEl.remove(); o.labelEl = null; }
+
+function buildLobe(o) {
+  const m = o.model, g = computeGrid(m); gradients(g);
+  const c = m.th[state.level], group = new THREE.Group();
+  const [pc, nc] = phaseColors(o.color);
+  [[1, pc], [-1, nc]].forEach(([sgn, col]) => {
+    const {pos, nrm} = polygonize(g, c, sgn); if (!pos.length) return;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    const mat = new THREE.MeshPhongMaterial({color: col, shininess: 60, specular: 0x2a2f38, side: THREE.DoubleSide, transparent: true, opacity: state.opacity, depthWrite: state.opacity > 0.96});
+    const mesh = new THREE.Mesh(geo, mat); mesh.userData.sgn = sgn; group.add(mesh);
+  });
+  if (o.lobe) disposeObj(o.lobe.group);
+  scene.add(group);
+  o.lobe = {group, level: state.level, anchor: anchorRadius(m, c)};
+}
+function buildCloud(o) {
+  const m = o.model; if (!m.th) computeGrid(m);
+  const {P, S, n} = sampleCloud(m, Math.round(BASE_POINTS * state.density));
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  const mat = new THREE.PointsMaterial({size: pointSize(), sizeAttenuation: false, vertexColors: true, map: dotTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: cloudOpacity()});
+  const points = new THREE.Points(geo, mat);
+  if (o.cloud) disposeObj(o.cloud.points);
+  scene.add(points);
+  o.cloud = {points, S, density: state.density, anchor: anchorRadius(m, m.th[90])};
+  colorCloud(o);
+}
+const pointSize = () => 2.4 * state.psize * Math.min(window.devicePixelRatio || 1, 2);
+const cloudOpacity = () => Math.min(1, 0.25 + state.opacity * 0.6);
+function colorCloud(o) {
+  const [pc, nc] = phaseColors(o.color), arr = o.cloud.points.geometry.attributes.color;
+  for (let i = 0; i < o.cloud.S.length; i++) { const c = o.cloud.S[i] > 0 ? pc : nc; arr.setXYZ(i, c.r, c.g, c.b); }
+  arr.needsUpdate = true;
+}
+function recolor(o) {
+  if (o.lobe) { const [pc, nc] = phaseColors(o.color); o.lobe.group.children.forEach(m => m.material.color.copy(m.userData.sgn > 0 ? pc : nc)); }
+  if (o.cloud) colorCloud(o);
+  if (o.labelEl) o.labelEl.style.setProperty('--c', o.color);
+}
+
+/* ---------- build queue ---------- */
+const queue = []; let busy = false, fitPending = false, snapFit = false;
+const current = o => state.mode === 'bohr' ? true : state.mode === 'lobe' ? (o.lobe && o.lobe.level === state.level) : (o.cloud && o.cloud.density === state.density);
+function schedule() {
+  for (const o of orbitals) if (o.visible && !current(o) && !queue.includes(o)) queue.push(o);
+  applyVisibility();
+  if (!busy) runQueue();
+}
+const nextFrame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+async function runQueue() {
+  busy = true; let done = 0;
+  while (queue.length) {
+    const o = queue.shift();
+    if (!o.visible || current(o) || !orbitals.includes(o)) continue;
+    const total = done + queue.length + 1;
+    setStatus(`Computing ${o.n}${LETTERS[o.l]}${o.l ? ANG[o.l][o.mi].s : ''} · ${done + 1}/${total}`);
+    await nextFrame();
+    if (!orbitals.includes(o) || !o.visible || current(o)) continue;
+    state.mode === 'lobe' ? buildLobe(o) : buildCloud(o);
+    done++; applyVisibility();
+  }
+  busy = false; setStatus(null);
+}
+function setStatus(t) { const el = $('#status'); el.hidden = !t; if (t) el.textContent = t; }
+
+function anchorOf(o) { if (state.mode === 'bohr') return null; const rec = state.mode === 'lobe' ? o.lobe : o.cloud; return rec && current(o) ? rec.anchor : null; }
+function applyVisibility() {
+  for (const o of orbitals) {
+    if (o.lobe) o.lobe.group.visible = o.visible && state.mode === 'lobe' && o.lobe.level === state.level;
+    if (o.cloud) o.cloud.points.visible = o.visible && state.mode === 'cloud';
+    const show = o.visible && state.labels && anchorOf(o) != null;
+    if (show && !o.labelEl) { const el = document.createElement('div'); el.className = 'olabel'; el.innerHTML = `<i></i>${orbLabel(o)}`; el.style.setProperty('--c', o.color); labelsLayer.appendChild(el); o.labelEl = el; }
+    if (o.labelEl) o.labelEl.hidden = !show;
+  }
+  if (state.autofit || fitPending) requestFit();
+}
+
+/* ---------- camera fitting ---------- */
+let fitTarget = null;
+function extentR() { let R = 0; for (const o of orbitals) { if (!o.visible) continue; const a = anchorOf(o); if (a) R = Math.max(R, a); } return R; }
+function requestFit(force) {
+  const R = extentR(); if (!R) return;
+  fitPending = false;
+  axisLen = R * 1.3; axes.scale.setScalar(axisLen);
+  const v = THREE.MathUtils.degToRad(camera.fov / 2), hz = Math.atan(Math.tan(v) * camera.aspect);
+  const dist = R * 1.18 / Math.sin(Math.min(v, hz));
+  if (snapFit || force === 'snap') { setDist(dist); snapFit = false; fitTarget = null; } else fitTarget = dist;
+}
+function setDist(d) { const dir = camera.position.clone().sub(controls.target).normalize(); camera.position.copy(controls.target).addScaledVector(dir, d); }
+controls.addEventListener('start', () => { fitTarget = null; });
+
+/* ---------- render loop ---------- */
+const tmp = new THREE.Vector3();
+function place(el, v, w, h, dx = 0) {
+  tmp.copy(v).project(camera);
+  if (tmp.z > 1 || tmp.z < -1) { el.style.visibility = 'hidden'; return; }
+  el.style.visibility = '';
+  el.style.transform = `translate(${((tmp.x + 1) / 2 * w + dx).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px) translate(-50%,-50%)`;
+}
+const NICE = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+function loop() {
+  requestAnimationFrame(loop);
+  if (document.documentElement.dataset.view === 'quantum') return;
+  if (state.mode === 'bohr') { drawBohr(performance.now()); return; }
+  const d = camera.position.distanceTo(controls.target);
+  if (fitTarget) { const nd = d + (fitTarget - d) * 0.14; setDist(nd); if (Math.abs(nd - fitTarget) < fitTarget * 0.002) fitTarget = null; }
+  controls.autoRotate = state.spin; controls.update();
+  const dist = camera.position.distanceTo(controls.target);
+  camera.near = dist * 0.005; camera.far = dist * 50; camera.updateProjectionMatrix();
+  nucleus.scale.setScalar(dist * 0.006);
+  axes.visible = state.axes;
+  renderer.render(scene, camera);
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  for (const a of axLabels) { a.el.hidden = !state.axes; if (state.axes) place(a.el, tmp.copy(a.v).multiplyScalar(axisLen * 1.06), w, h); }
+  for (const o of orbitals) {
+    if (!o.labelEl || o.labelEl.hidden) continue;
+    const r = anchorOf(o); if (!r) continue; const dd = o.model.dir;
+    place(o.labelEl, new THREE.Vector3(dd[0], dd[1], dd[2]).multiplyScalar(r * 1.04), w, h);
+  }
+  // scale bar
+  const pxPer = h / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  let pick = NICE[0]; for (const v of NICE) if (v * pxPer <= 130) pick = v;
+  $('#scaleBar').style.width = (pick * pxPer).toFixed(1) + 'px';
+  $('#scaleTxt').textContent = pick < 0.1 ? `${+(pick * 100).toFixed(1)} pm` : `${pick} Å`;
+}
+
+/* ---------- panel: element ---------- */
+function coreOf(N, c) {
+  let best = 0;
+  for (const g of NOBLE) { if (g >= N) break; const gc = configOf(g); if ([...gc].every(([k, v]) => c.get(k) === v)) best = g; }
+  return best;
+}
+const chargeTxt = ch => ch === 0 ? '' : `${Math.abs(ch) > 1 ? Math.abs(ch) : ''}${ch > 0 ? '+' : '−'}`;
+function renderElement() {
+  const Z = state.Z, ch = state.charge, N = Z - ch;
+  $('#elZ').textContent = Z;
+  $('#elSym').innerHTML = SYM[Z - 1] + (ch ? `<sup>${chargeTxt(ch)}</sup>` : '');
+  $('#elName').textContent = EN[Z - 1] + (ch ? (ch > 0 ? ' cation' : ' anion') : '');
+  const core = coreOf(N, cfg), coreCfg = core ? configOf(core) : new Map();
+  const parts = displayKeys(cfg).filter(k => (cfg.get(k) || 0) !== (coreCfg.get(k) || 0) || !coreCfg.has(k)).map(k => `${k}${SUP(cfg.get(k))}`);
+  $('#elCfg').textContent = (core ? `[${SYM[core - 1]}] ` : '') + parts.join(' ');
+  const neutral = configOf(Z), period = Math.max(...[...neutral.keys()].map(k => +k[0]));
+  let last = SUBS[0]; let left = Z; for (const s of SUBS) { if (left <= 0) break; last = s; left -= 2 * (2 * s.l + 1); }
+  const block = Z === 2 ? 's' : LETTERS[last.l];
+  const nOrb = orbitals.filter(o => o.e > 0).length;
+  const iso = NOBLE.includes(N) && ch ? ` · isoelectronic with ${SYM[N - 1]}` : '';
+  $('#elFacts').textContent = `Period ${period} · ${block}-block · ${N} electrons · ${nOrb} occupied orbitals${iso}`;
+  $('#zInput').value = Z; $('#zInput').setAttribute('aria-invalid', 'false'); $('#zHint').textContent = ''; $('#zRange').value = Z;
+  const [lo, hi] = eRange(Z);
+  $('#eCount').innerHTML = `${N} e⁻ · <b>${ch ? 'charge ' + chargeTxt(ch) : 'neutral'}</b>`;
+  $('#eMinus').disabled = N <= lo; $('#ePlus').disabled = N >= hi; $('#eNeutral').disabled = ch === 0;
+  $('#eMinus').title = N <= lo ? 'At least one electron must remain' : 'Remove one electron (from the highest n first)';
+  $('#ePlus').title = N >= hi ? `At most ${MAX_ANION} extra electrons` : 'Add one electron (Aufbau order)';
+  if (typeof markPT === 'function' && document.querySelector('#ptGrid .pt-cell')) markPT();
+}
+
+/* ---------- panel: orbital list ---------- */
+const EYE = `<svg class="on" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="off" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`;
+const SOLO = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+const CHEV = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+const ARROWS = ['', '↑', '↑↓'];
+const fmtE = E => { const a = Math.abs(E); return '−' + (a >= 1000 ? (a / 1000).toFixed(a >= 10000 ? 1 : 2) + ' keV' : a.toFixed(a >= 100 ? 0 : 1) + ' eV'); };
+function renderList() {
+  const box = $('#olist'); box.innerHTML = '';
+  const subs = [...new Set(orbitals.map(o => o.key))];
+  for (const key of subs) {
+    const group = orbitals.filter(o => o.key === key), first = group[0];
+    const sec = document.createElement('div'); sec.className = 'sub'; sec.dataset.key = key; sec.dataset.open = String(group.some(o => o.visible) || group.length === 1);
+    sec.innerHTML = `<div class="sub-h">
+      <button type="button" class="eye" data-act="sub-eye" aria-label="Show or hide ${key}">${EYE}</button>
+      <input type="color" data-act="sub-color" value="${first.color}" aria-label="${key} subshell color">
+      <span class="sub-name">${key}</span>
+      <span class="sub-e">${first.subE}/${2 * group.length} e⁻</span>
+      <span class="sub-z" title="Slater effective nuclear charge">Z* ${first.Zeff.toFixed(2)}</span>
+      ${group.length > 1 ? `<button type="button" class="chev" data-act="toggle" aria-label="Expand or collapse ${key}">${CHEV}</button>` : `<button type="button" class="solo" data-act="solo" data-i="${orbitals.indexOf(first)}" aria-label="Show only ${key}" title="Show only this orbital">${SOLO}</button>`}
+    </div>`;
+    if (group.length > 1) {
+      const rows = document.createElement('div'); rows.className = 'rows';
+      for (const o of group) {
+        const i = orbitals.indexOf(o), plain = orbLabel(o).replace(/<[^>]+>/g, '');
+        rows.insertAdjacentHTML('beforeend', `<div class="row" data-empty="${o.e === 0}">
+          <button type="button" class="eye" data-act="eye" data-i="${i}" aria-label="Show or hide ${plain}">${EYE}</button>
+          <input type="color" data-act="color" data-i="${i}" value="${o.color}" aria-label="${plain} color">
+          <span class="oname">${orbLabel(o)}</span>
+          <span class="box" title="${o.e} electron(s)">${ARROWS[o.e]}</span>
+          <button type="button" class="solo" data-act="solo" data-i="${i}" aria-label="Show only ${plain}" title="Show only this orbital">${SOLO}</button>
+        </div>`);
+      }
+      sec.appendChild(rows);
+    } else {
+      sec.querySelector('.sub-e').insertAdjacentHTML('afterend', `<span class="box" title="${first.e} electron(s)">${ARROWS[first.e]}</span>`);
+    }
+    box.appendChild(sec);
+  }
+  syncList();
+}
+function syncList() {
+  document.querySelectorAll('#olist .sub').forEach(sec => {
+    const group = orbitals.filter(o => o.key === sec.dataset.key), vis = group.filter(o => o.visible).length;
+    sec.querySelector('[data-act="sub-eye"]').setAttribute('aria-pressed', vis === 0 ? 'false' : vis === group.length ? 'true' : 'mixed');
+    sec.querySelectorAll('[data-act="eye"]').forEach(b => b.setAttribute('aria-pressed', String(orbitals[+b.dataset.i].visible)));
+  });
+}
+$('#olist').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const sec = b.closest('.sub'), key = sec.dataset.key, act = b.dataset.act;
+  if (act === 'toggle') { sec.dataset.open = sec.dataset.open === 'true' ? 'false' : 'true'; return; }
+  if (act === 'eye') { const o = orbitals[+b.dataset.i]; o.visible = !o.visible; }
+  if (act === 'sub-eye') { const g = orbitals.filter(o => o.key === key), any = g.some(o => o.visible); g.forEach(o => o.visible = !any); if (!any) sec.dataset.open = 'true'; }
+  if (act === 'solo') { const t = orbitals[+b.dataset.i]; orbitals.forEach(o => o.visible = o === t); }
+  syncList(); schedule();
+});
+$('#olist').addEventListener('input', e => {
+  const inp = e.target; if (inp.type !== 'color') return;
+  const sec = inp.closest('.sub'), key = sec.dataset.key;
+  if (inp.dataset.act === 'color') { const o = orbitals[+inp.dataset.i]; o.color = inp.value; recolor(o); }
+  else { orbitals.filter(o => o.key === key).forEach(o => { o.color = inp.value; recolor(o); }); sec.querySelectorAll('[data-act="color"]').forEach(c => c.value = inp.value); }
+});
+$('#bValence').onclick = () => { orbitals.forEach(o => o.visible = o.valence && o.e > 0); syncList(); schedule(); };
+$('#bOcc').onclick = () => { orbitals.forEach(o => o.visible = o.e > 0); syncList(); schedule(); };
+$('#bNone').onclick = () => { orbitals.forEach(o => o.visible = false); syncList(); schedule(); };
+
+/* ---------- panel: element input ---------- */
+function parseZ(v) {
+  v = v.trim(); if (!v) return null;
+  if (/^\d+$/.test(v)) { const n = +v; return n >= 1 && n <= 118 ? n : null; }
+  const i = SYM.findIndex(s => s.toLowerCase() === v.toLowerCase()); if (i >= 0) return i + 1;
+  const j = EN.findIndex(s => s.toLowerCase() === v.toLowerCase()); if (j >= 0) return j + 1;
+  const c = CN.indexOf(v); return c >= 0 ? c + 1 : null;
+}
+function commitZ() {
+  const z = parseZ($('#zInput').value);
+  if (z == null) { $('#zInput').setAttribute('aria-invalid', 'true'); $('#zHint').textContent = 'Enter an atomic number from 1 to 118, a symbol or an element name'; return; }
+  if (z !== state.Z) setElement(z); else renderElement();
+}
+$('#zInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitZ(); } });
+$('#zInput').addEventListener('change', commitZ);
+/* ---------- periodic table ---------- */
+function ptPos(Z) {
+  if (Z === 1) return [1, 1]; if (Z === 2) return [1, 18];
+  if (Z <= 4) return [2, Z - 2]; if (Z <= 10) return [2, Z + 8];
+  if (Z <= 12) return [3, Z - 10]; if (Z <= 18) return [3, Z];
+  if (Z <= 36) return [4, Z - 18]; if (Z <= 54) return [5, Z - 36];
+  if (Z <= 56) return [6, Z - 54]; if (Z <= 71) return [9, Z - 54]; if (Z <= 86) return [6, Z - 68];
+  if (Z <= 88) return [7, Z - 86]; if (Z <= 103) return [10, Z - 86]; return [7, Z - 100];
+}
+function blockOf(Z) { if (Z === 2) return 's'; let last = SUBS[0], left = Z; for (const s of SUBS) { if (left <= 0) break; last = s; left -= 2 * (2 * s.l + 1); } return LETTERS[last.l]; }
+function neutralCfgText(Z) {
+  const c = configOf(Z), core = coreOf(Z, c), cc = core ? configOf(core) : new Map();
+  return (core ? `[${SYM[core - 1]}] ` : '') + displayKeys(c).filter(k => cc.get(k) !== c.get(k)).map(k => k + SUP(c.get(k))).join(' ');
+}
+(() => {
+  const grid = $('#ptGrid'); let html = '';
+  for (let Z = 1; Z <= 118; Z++) {
+    const [r, g] = ptPos(Z);
+    html += `<button type="button" class="pt-cell" data-z="${Z}" style="grid-row:${r};grid-column:${g};--bk:var(--bk-${blockOf(Z)})" title="${Z} ${EN[Z - 1]}" aria-label="${Z} ${EN[Z - 1]}"><span class="z">${Z}</span><span class="s">${SYM[Z - 1]}</span></button>`;
+  }
+  html += `<div class="pt-ph" style="grid-row:6;grid-column:3">57–71</div><div class="pt-ph" style="grid-row:7;grid-column:3">89–103</div>`;
+  html += `<div class="pt-flab" style="grid-row:9">Lanthanides</div><div class="pt-flab" style="grid-row:10">Actinides</div>`;
+  grid.innerHTML = html;
+  const info = z => { $('#ptInfo').innerHTML = `<b>${z} · ${SYM[z - 1]} · ${EN[z - 1]}</b> ${neutralCfgText(z)}`; };
+  grid.addEventListener('click', e => { const b = e.target.closest('.pt-cell'); if (!b) return; closePT(); setElement(+b.dataset.z); });
+  grid.addEventListener('mouseover', e => { const b = e.target.closest('.pt-cell'); if (b) info(+b.dataset.z); });
+  grid.addEventListener('focusin', e => { const b = e.target.closest('.pt-cell'); if (b) info(+b.dataset.z); });
+  $('#ptOpen').onclick = () => { const p = $('#pt'); if (!p.hidden) return closePT(); p.hidden = false; markPT(); info(state.Z); const cur = grid.querySelector('[aria-current="true"]'); if (cur) cur.focus({preventScroll: false}); if (window.innerWidth <= 760) viewer.scrollIntoView({behavior: 'smooth', block: 'start'}); };
+  $('#ptClose').onclick = closePT;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#pt').hidden) closePT(); });
+})();
+function closePT() { $('#pt').hidden = true; }
+function markPT() { document.querySelectorAll('#ptGrid .pt-cell').forEach(b => b.setAttribute('aria-current', String(+b.dataset.z === state.Z))); }
+
+$('#eMinus').onclick = () => setCharge(state.charge + 1);
+$('#ePlus').onclick = () => setCharge(state.charge - 1);
+$('#eNeutral').onclick = () => setCharge(0);
+$('#prevZ').onclick = () => setElement(state.Z - 1);
+$('#nextZ').onclick = () => setElement(state.Z + 1);
+let rangeT = null;
+$('#zRange').addEventListener('input', e => {
+  const z = +e.target.value; $('#zInput').value = z; $('#elSym').textContent = SYM[z - 1]; $('#elZ').textContent = z; $('#elName').textContent = EN[z - 1];
+  clearTimeout(rangeT); rangeT = setTimeout(() => setElement(z), 160);
+});
+
+/* ---------- panel: settings ---------- */
+function renderModeUI() {
+  const bohr = state.mode === 'bohr';
+  document.querySelectorAll('#elMode button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === state.mode)));
+  $('#levelCtl').hidden = state.mode !== 'lobe';
+  $('#densityCtl').hidden = $('#psizeCtl').hidden = state.mode !== 'cloud';
+  $('#legend').hidden = !state.phase || bohr;
+  $('#bohr').hidden = !bohr; renderer.domElement.hidden = bohr; labelsLayer.hidden = bohr;
+  document.querySelector('#elApp .hud-tr').hidden = bohr;
+  document.querySelector('#elApp .hud-bl').hidden = bohr;
+  if (bohr) {
+    const sh = cfg ? shellCounts() : [];
+    $('#modeChip').innerHTML = `<b>Bohr model</b> · ${sh.map(s => s.e).join(' · ')} · not to scale`;
+  } else $('#modeChip').innerHTML = state.mode === 'lobe' ? `<b>Lobes</b> · ${state.level}% probability isosurface` : `<b>Electron cloud</b> · ${Math.round(BASE_POINTS * state.density)} points per orbital`;
+}
+document.querySelectorAll('#elMode button').forEach(b => b.onclick = () => { state.mode = b.dataset.mode; save(); renderModeUI(); schedule(); });
+
+/* ---------- Bohr model ---------- */
+const SHELL_LETTERS = 'KLMNOPQ';
+// electrons grouped by shell n, in subshell order s, p, d, f; each carries its orbital (for color and visibility)
+function shellCounts() {
+  const shells = [];
+  for (const o of [...orbitals].sort((a, b) => a.n - b.n || a.l - b.l || a.mi - b.mi)) {
+    if (!o.e) continue;
+    let s = shells.find(x => x.n === o.n); if (!s) { s = {n: o.n, e: 0, els: []}; shells.push(s); }
+    for (let i = 0; i < o.e; i++) { s.els.push(o); s.e++; }
+  }
+  return shells.sort((a, b) => a.n - b.n);
+}
+const bohrCv = $('#bohr'), reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let bohrShells = null, bohrKey = '';
+function drawBohr(t) {
+  const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (bohrCv.width !== Math.round(w * dpr) || bohrCv.height !== Math.round(h * dpr)) { bohrCv.width = Math.round(w * dpr); bohrCv.height = Math.round(h * dpr); }
+  const key = state.Z + ':' + state.charge + ':' + orbitals.length; if (key !== bohrKey) { bohrShells = shellCounts(); bohrKey = key; }
+  const ctx = bohrCv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement), C = v => css.getPropertyValue(v).trim();
+  const cx = w / 2, cy = h / 2 + 10, S = bohrShells.length;
+  const maxR = Math.max(60, Math.min(w, h) / 2 - 36);
+  const nucR = Math.max(20, Math.min(34, maxR * 0.13));
+  const step = (maxR - nucR) / (S + 0.15);
+  const time = reduceMotion ? 0 : t / 1000;
+  // shells
+  bohrShells.forEach((s, i) => {
+    const r = nucR + step * (i + 0.9);
+    ctx.strokeStyle = C('--line'); ctx.lineWidth = 1.25; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    const dotR = Math.max(2.5, Math.min(6, (2 * Math.PI * r / s.e) * 0.3, step * 0.22));
+    const rot = time * 0.6 / Math.sqrt(s.n) * (i % 2 ? -1 : 1);
+    s.els.forEach((o, j) => {
+      const a = rot + (j / s.e) * Math.PI * 2 - Math.PI / 2, x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      ctx.globalAlpha = o.visible ? 1 : 0.28;
+      ctx.fillStyle = o.color; ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2); ctx.fill();
+      if (o.visible && dotR >= 4) { ctx.globalAlpha = 0.35; ctx.strokeStyle = o.color; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, dotR + 2.5, 0, Math.PI * 2); ctx.stroke(); }
+    });
+    ctx.globalAlpha = 1;
+    if (state.labels) {
+      const la = -Math.PI / 4, lx = cx + r * Math.cos(la) + 6, ly = cy + r * Math.sin(la) - 6;
+      const txt = `n=${s.n} ${SHELL_LETTERS[s.n - 1]} · ${s.e}`;
+      ctx.font = `500 11.5px ${C('--f-mono')}`; const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = C('--glass'); ctx.strokeStyle = C('--line'); ctx.lineWidth = 1;
+      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(lx - 5, ly - 10, tw + 10, 19, 9); else ctx.rect(lx - 5, ly - 10, tw + 10, 19); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C('--muted'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(txt, lx, ly);
+    }
+  });
+  // nucleus
+  const g = ctx.createRadialGradient(cx - nucR * 0.3, cy - nucR * 0.35, nucR * 0.1, cx, cy, nucR);
+  g.addColorStop(0, '#FFE2A6'); g.addColorStop(1, C('--nucleus'));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, nucR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2A1E08'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `800 ${Math.round(nucR * 0.72)}px ${C('--f-display')}`;
+  ctx.fillText(SYM[state.Z - 1], cx, cy - nucR * 0.16);
+  ctx.font = `500 ${Math.max(9, Math.round(nucR * 0.36))}px ${C('--f-mono')}`;
+  ctx.fillText(`${state.Z}p⁺`, cx, cy + nucR * 0.45);
+}
+const bindSlider = (id, key, fmt, onChange, delay = 0) => {
+  const el = $('#' + id), out = $('#' + id + 'Out'); el.value = state[key]; out.textContent = fmt(state[key]); let t = null;
+  el.addEventListener('input', () => { state[key] = +el.value; out.textContent = fmt(state[key]); save(); renderModeUI(); clearTimeout(t); t = setTimeout(onChange, delay); });
+};
+bindSlider('level', 'level', v => v + '%', () => schedule(), 220);
+bindSlider('density', 'density', v => Math.round(BASE_POINTS * v) + ' pts', () => schedule(), 260);
+bindSlider('psize', 'psize', v => v.toFixed(1) + '×', () => orbitals.forEach(o => o.cloud && (o.cloud.points.material.size = pointSize())));
+bindSlider('opacity', 'opacity', v => Math.round(v * 100) + '%', () => orbitals.forEach(o => {
+  if (o.lobe) o.lobe.group.children.forEach(m => { m.material.opacity = state.opacity; m.material.depthWrite = state.opacity > 0.96; m.material.needsUpdate = true; });
+  if (o.cloud) o.cloud.points.material.opacity = cloudOpacity();
+}));
+const bindToggle = (id, key, fn) => { const el = $('#' + id); el.checked = state[key]; el.addEventListener('change', () => { state[key] = el.checked; save(); fn && fn(); }); };
+bindToggle('tPhase', 'phase', () => { orbitals.forEach(recolor); renderModeUI(); });
+bindToggle('tLabels', 'labels', applyVisibility);
+bindToggle('tAxes', 'axes');
+bindToggle('tSpin', 'spin');
+bindToggle('tFit', 'autofit', () => state.autofit && requestFit());
+$('#fitBtn').onclick = () => requestFit();
+$('#resetBtn').onclick = () => { const d = camera.position.distanceTo(controls.target); controls.target.set(0, 0, 0); camera.position.copy(HOME_DIR).multiplyScalar(d); camera.up.set(0, 1, 0); requestFit(); };
+
+renderModeUI();
+setElement(state.Z, {snap: true});
+loop();
+</script>
+
+<script>
+/* ===== quantum-number page + page router ===== */
+(() => {
+const $ = s => document.querySelector(s);
+const qs = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const LET = 'spdfghi';
+const RN = {1:{'-1':'y','0':'z','1':'x'},
+  2:{'-2':'xy','-1':'yz','0':'z²','1':'xz','2':'x²−y²'},
+  3:{'-3':'y(3x²−y²)','-2':'xyz','-1':'yz²','0':'z³','1':'xz²','2':'z(x²−y²)','3':'x(x²−3y²)'}};
+const SHAPE = ['sphere', 'dumbbell', 'cloverleaf', 'f-shape', 'g-shape', 'h-shape', 'i-shape'];
+const DEF = {n:3,l:2,m:-2,ms:1,Z:1,form:'real',mode:'lobe',level:90,density:1,opacity:0.85,axes:true,spin:true,cut:false,cPos:'#7fb2ff',cNeg:'#f2a25c'};
+const S = {...DEF}; try { Object.assign(S, JSON.parse(qs.get('qn-explorer') || '{}')); } catch(e) {}
+const save = () => qs.set('qn-explorer', JSON.stringify(S));
+const MINUS = '−';
+const fmtM = v => v > 0 ? `+${v}` : v < 0 ? `${MINUS}${-v}` : '0';
+const fmtMs = v => v > 0 ? '+½' : `${MINUS}½`;
+const num = (v, d) => (v < 0 ? MINUS : '') + Math.abs(v).toFixed(d);
+const SUPD = s => String(s).replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+const rname = (l, m) => l === 0 ? '' : (RN[l] ? RN[l][m] : null);
+function orbHTML(n, l, m, form) {
+  const b = `${n}${LET[l]}`; if (l === 0) return b;
+  const r = form === 'real' ? rname(l, m) : null;
+  return `${b}<sub>${r || fmtM(m)}</sub>`;
+}
+const ionName = Z => Z === 1 ? 'H' : `${SYM[Z - 1]}${Z - 1 > 1 ? SUPD(Z - 1) : ''}⁺`;
+
+/* ---------- physics ---------- */
+function plm(l, m, x) {
+  let pmm = 1;
+  if (m > 0) { const s = Math.sqrt(Math.max(0, (1 - x) * (1 + x))); let f = 1; for (let i = 1; i <= m; i++) { pmm *= f * s; f += 2; } }
+  if (l === m) return pmm;
+  let p1 = x * (2 * m + 1) * pmm; if (l === m + 1) return p1;
+  let pl = 0; for (let ll = m + 2; ll <= l; ll++) { pl = (x * (2 * ll - 1) * p1 - (ll + m - 1) * pmm) / (ll - m); pmm = p1; p1 = pl; }
+  return pl;
+}
+function makeQ(n, l, m, Z, form) {
+  const k = 2 * Z / (n * A0), lag = laguerre(n - l - 1, 2 * l + 1), am = Math.abs(m), real = form === 'real';
+  const trig = ph => m > 0 ? Math.cos(m * ph) : m < 0 ? Math.sin(am * ph) : 1;
+  const radial = r => { const rho = k * r; return Math.exp(-0.5 * rho) * Math.pow(rho, l) * lag(rho); };
+  const rp = (x, y, z) => { const r = Math.sqrt(x*x + y*y + z*z); return radial(r) * plm(l, am, r > 0 ? z / r : 1); };
+  const psi = real ? (x, y, z) => rp(x, y, z) * trig(Math.atan2(y, x)) : (x, y, z) => Math.abs(rp(x, y, z));
+  const phase = (x, y, z) => m * Math.atan2(y, x) + (rp(x, y, z) < 0 ? Math.PI : 0);
+  const ang = real ? (x, y, z) => plm(l, am, z) * trig(Math.atan2(y, x)) : (x, y, z) => plm(l, am, z);
+  const q = {n, l, m, am, Z, form, real, k, lag, radial, psi, phase, ang};
+  // radial CDF
+  const M = 3000, rEnd = A0 * (4 * n * n + 12 * n) / Z, dr = rEnd / M, cdf = new Float64Array(M + 1);
+  let acc = 0, best = 0; q.rmp = 0;
+  for (let i = 1; i <= M; i++) { const r = (i - .5) * dr, R = radial(r), p = r * r * R * R; if (p > best) { best = p; q.rmp = r; } acc += p * dr; cdf[i] = acc; }
+  for (let i = 1; i <= M; i++) cdf[i] /= acc;
+  q.rAt = p => { let lo = 1, hi = M; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < p) lo = mid + 1; else hi = mid; } const a = cdf[lo - 1], b = cdf[lo]; return (lo - 1 + (b > a ? (p - a) / (b - a) : 0)) * dr; };
+  q.L = q.rAt(0.998);
+  let mx = 0; for (const d of FIB) mx = Math.max(mx, Math.abs(ang(d[0], d[1], d[2])));
+  q.ang2 = mx * mx * 1.05;
+  // radial node positions
+  q.nodes = []; const f = r => lag(k * r), top = q.rAt(0.99995), NN = 4000; let prev = f(1e-9);
+  for (let i = 1; i <= NN; i++) {
+    const r = top * i / NN, v = f(r);
+    if (prev * v < 0) { let a = top * (i - 1) / NN, b = r, fa = prev; for (let j = 0; j < 50; j++) { const c = (a + b) / 2, fc = f(c); if (fa * fc <= 0) b = c; else { a = c; fa = fc; } } q.nodes.push((a + b) / 2); }
+    prev = v;
+  }
+  q.rMean = A0 / (2 * Z) * (3 * n * n - l * (l + 1));
+  return q;
+}
+const QN = 72;
+function gridOf(q) {
+  if (q.g) return q.g;
+  const N = QN, N1 = N + 1, L = q.L, h = 2 * L / N, vals = new Float32Array(N1 * N1 * N1);
+  let p = 0;
+  for (let k = 0; k < N1; k++) { const z = -L + k * h; for (let j = 0; j < N1; j++) { const y = -L + j * h; for (let i = 0; i < N1; i++) vals[p++] = q.psi(-L + i * h, y, z); } }
+  const sq = new Float32Array(vals.length); let tot = 0; for (let i = 0; i < vals.length; i++) { sq[i] = vals[i] * vals[i]; tot += sq[i]; }
+  sq.sort(); const th = {}; let acc = 0, li = 0;
+  for (let i = sq.length - 1; i >= 0 && li < LEVELS.length; i--) { acc += sq[i]; while (li < LEVELS.length && acc >= LEVELS[li] / 100 * tot) { th[LEVELS[li]] = Math.sqrt(sq[i]); li++; } }
+  q.th = th;
+  const g = {vals, N, L, h}; gradients(g); q.g = g; return g;
+}
+const cache = new Map();
+function getQ() {
+  const key = [S.n, S.l, S.m, S.Z, S.form].join(',');
+  let q = cache.get(key);
+  if (!q) { q = makeQ(S.n, S.l, S.m, S.Z, S.form); cache.set(key, q); if (cache.size > 10) cache.delete(cache.keys().next().value); }
+  return q;
+}
+
+/* ---------- validation + parsing ---------- */
+const lList = n => n === 1 ? '0' : n === 2 ? '0 or 1' : `0 to ${n - 1}`;
+const norm = s => s.toLowerCase().replace(/²/g, '2').replace(/³/g, '3').replace(/[−–]/g, '-').replace(/[\s_^{}]/g, '');
+const NAMEMAP = {}; for (const l of [1, 2, 3]) for (const [m, nm] of Object.entries(RN[l])) NAMEMAP[l + ':' + norm(nm)] = +m;
+function checkNLM(n, l, m) {
+  if (!Number.isInteger(n) || n < 1 || n > 7) return 'n must be a whole number from 1 to 7.';
+  if (!Number.isInteger(l) || l < 0) return 'l must be a whole number of 0 or more.';
+  if (l > n - 1) return `For n = ${n}, l can only be ${lList(n)} (l runs from 0 to n − 1).`;
+  if (!Number.isInteger(m) || Math.abs(m) > l) return l === 0 ? 'For l = 0, mₗ can only be 0.' : `For l = ${l}, mₗ runs from −${l} to +${l}.`;
+  return null;
+}
+function parseMs(t) {
+  const s = t.replace('½', '1/2');
+  if (['+1/2', '1/2', '0.5', '+0.5', '+', 'up', '↑', 'u'].includes(s)) return 1;
+  if (['-1/2', '-0.5', '-', 'down', '↓', 'd'].includes(s)) return -1;
+  return null;
+}
+function parseQuick(raw) {
+  const t = raw.trim();
+  if (!t) return {err: 'Type an orbital such as 3d or 2px, or numbers like 3 2 -1 +1/2.'};
+  const mm = norm(t).match(/^(\d+)([a-z])(.*)$/);
+  if (mm) {
+    const n = +mm[1], l = LET.indexOf(mm[2]), rest = mm[3];
+    if (l < 0) return {err: `“${mm[2]}” is not a subshell letter. Use s, p, d, f, g, h or i.`};
+    if (n < 1 || n > 7) return {err: 'n must be a whole number from 1 to 7.'};
+    if (l > n - 1) return {err: `${n}${LET[l]} does not exist: for n = ${n}, l can only be ${lList(n)}, so the subshells are ${[...Array(n)].map((_, i) => n + LET[i]).join(', ')}.`};
+    let m = Math.abs(S.m) <= l ? S.m : 0, ms = S.ms;
+    if (rest) {
+      if ((l + ':' + rest) in NAMEMAP) m = NAMEMAP[l + ':' + rest];
+      else {
+        const r2 = rest.replace(/^m(l)?=?/, '');
+        if (/^[+-]?\d+$/.test(r2)) m = +r2;
+        else { const ex = RN[l] ? Object.values(RN[l]).map(v => n + LET[l] + v).slice(0, 3).join(', ') : `${n}${LET[l]} -1`; return {err: `Unknown orbital “${t}”. Try ${ex}.`}; }
+      }
+    }
+    const e = checkNLM(n, l, m); if (e) return {err: e};
+    return {v: {n, l, m, ms}};
+  }
+  const tok = t.replace(/[−–]/g, '-').split(/[\s,;()]+/).filter(Boolean);
+  if (tok.length < 2 || tok.length > 4) return {err: 'Give 2 to 4 numbers in the order n l mₗ mₛ, for example 3 2 -1 +1/2.'};
+  const n = Number(tok[0]), l = Number(tok[1]), m = tok.length > 2 ? Number(tok[2]) : 0;
+  const e = checkNLM(n, l, m); if (e) return {err: e};
+  let ms = S.ms;
+  if (tok.length > 3) { ms = parseMs(tok[3]); if (ms == null) return {err: 'mₛ is either +1/2 or −1/2.'}; }
+  return {v: {n, l, m, ms}};
+}
+
+/* ---------- three.js scene ---------- */
+let renderer, scene, camera, controls, nucleus, axes, axLabels, axisLen = 1, cur = null, gen = 0, fitTarget = null, inited = false;
+const CLIP = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+const HOME = new THREE.Vector3(1.25, 0.95, 1.7).normalize();
+const viewer = $('#qViewer');
+function initScene() {
+  renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.localClippingEnabled = true;
+  viewer.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(38, 1, 0.001, 1000);
+  camera.position.copy(HOME).multiplyScalar(10); scene.add(camera);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotateSpeed = 1.4; controls.minDistance = 0.002; controls.maxDistance = 2000;
+  controls.addEventListener('start', () => { fitTarget = null; });
+  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f2a, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 1.5, 2); camera.add(key);
+  const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
+  nucleus = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({color: 0xF2C46D})); scene.add(nucleus);
+  axes = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([-1,0,0,1,0,0, 0,-1,0,0,1,0, 0,0,-1,0,0,1], 3)),
+    new THREE.LineBasicMaterial({color: 0x3b4556, transparent: true, opacity: 0.9}));
+  scene.add(axes);
+  axLabels = ['x', 'y', 'z'].map((t, i) => { const el = document.createElement('div'); el.className = 'axlabel'; el.textContent = t; $('#qLabels').appendChild(el); return {el, v: new THREE.Vector3(i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0)}; });
+  const resize = () => { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(viewer); resize();
+  loop();
+}
+function dispose(obj) { if (!obj) return; scene.remove(obj); obj.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+const tc = new THREE.Color();
+const hueColor = (ph, c) => c.setHSL((((ph / (2 * Math.PI)) % 1) + 1) % 1, 0.78, 0.6);
+const clipList = () => S.cut ? [CLIP] : [];
+function buildLobe(q) {
+  const g = gridOf(q), c = q.th[S.level], group = new THREE.Group();
+  const mk = (pos, nrm, col, color) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    if (col) geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.MeshPhongMaterial({color: color || 0xffffff, vertexColors: !!col, shininess: 60, specular: 0x2a2f38, side: THREE.DoubleSide, transparent: true, opacity: S.opacity, depthWrite: S.opacity > 0.96, clippingPlanes: clipList()});
+    return new THREE.Mesh(geo, mat);
+  };
+  let R = 0;
+  const ext = pos => { for (let i = 0; i < pos.length; i += 3) R = Math.max(R, Math.hypot(pos[i], pos[i+1], pos[i+2])); };
+  if (q.real) {
+    for (const s of [1, -1]) { const {pos, nrm} = polygonize(g, c, s); if (!pos.length) continue; ext(pos); const mesh = mk(pos, nrm, null, new THREE.Color(s > 0 ? S.cPos : S.cNeg)); mesh.userData.sgn = s; group.add(mesh); }
+  } else {
+    const {pos, nrm} = polygonize(g, c, 1);
+    if (pos.length) { ext(pos); const col = new Float32Array(pos.length); for (let i = 0; i < pos.length; i += 3) { hueColor(q.phase(pos[i], pos[i+1], pos[i+2]), tc); col[i] = tc.r; col[i+1] = tc.g; col[i+2] = tc.b; } group.add(mk(pos, nrm, col)); }
+  }
+  return {obj: group, R: R || q.rAt(0.9)};
+}
+function buildCloud(q) {
+  const count = Math.round(9000 * S.density), P = new Float32Array(count * 3), C = new Float32Array(count * 3);
+  const cp = new THREE.Color(S.cPos), cn = new THREE.Color(S.cNeg);
+  let n = 0, guard = 0;
+  while (n < count && guard < count * 800) {
+    guard++;
+    const z = 2 * Math.random() - 1, ph = 2 * Math.PI * Math.random(), s = Math.sqrt(1 - z * z), x = s * Math.cos(ph), y = s * Math.sin(ph);
+    const a = q.ang(x, y, z); if (a * a < Math.random() * q.ang2) continue;
+    const r = q.rAt(Math.random() * 0.9995), sg = a * q.lag(q.k * r);
+    P[3*n] = x * r; P[3*n+1] = y * r; P[3*n+2] = z * r;
+    const col = q.real ? (sg >= 0 ? cp : cn) : hueColor(q.m * ph + (sg < 0 ? Math.PI : 0), tc);
+    C[3*n] = col.r; C[3*n+1] = col.g; C[3*n+2] = col.b; n++;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(P.subarray(0, 3 * n), 3)); geo.setAttribute('color', new THREE.BufferAttribute(C.subarray(0, 3 * n), 3));
+  const mat = new THREE.PointsMaterial({size: 2.9 * Math.min(window.devicePixelRatio || 1, 2), sizeAttenuation: false, vertexColors: true, map: dotTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: Math.min(1, 0.25 + S.opacity * 0.6), clippingPlanes: clipList()});
+  return {obj: new THREE.Points(geo, mat), R: q.rAt(0.97), n};
+}
+function setStatus(t) { const el = $('#qStatus'); el.hidden = !t; if (t) el.textContent = t; }
+let rebuildT = null;
+function rebuild(snap, delay = 0) {
+  clearTimeout(rebuildT);
+  rebuildT = setTimeout(() => {
+    const my = ++gen; setStatus('Computing orbital…');
+    requestAnimationFrame(() => setTimeout(() => {
+      if (my !== gen) return;
+      const q = getQ(), b = S.mode === 'lobe' ? buildLobe(q) : buildCloud(q);
+      if (my !== gen) { dispose(b.obj); return; }
+      if (cur) dispose(cur.obj);
+      scene.add(b.obj); cur = b; fit(snap); setStatus(null);
+    }, 0));
+  }, delay);
+}
+function setDist(d) { const dir = camera.position.clone().sub(controls.target).normalize(); camera.position.copy(controls.target).addScaledVector(dir, d); }
+function fit(snap) {
+  if (!cur) return; const R = cur.R;
+  axisLen = R * 1.3; axes.scale.setScalar(axisLen);
+  const v = THREE.MathUtils.degToRad(camera.fov / 2), hz = Math.atan(Math.tan(v) * camera.aspect);
+  const dist = R * 1.2 / Math.sin(Math.min(v, hz));
+  if (snap) { setDist(dist); fitTarget = null; } else fitTarget = dist;
+}
+const tmp = new THREE.Vector3();
+const NICE = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+function loop() {
+  requestAnimationFrame(loop);
+  if (document.documentElement.dataset.view !== 'quantum') return;
+  const d = camera.position.distanceTo(controls.target);
+  if (fitTarget) { const nd = d + (fitTarget - d) * 0.14; setDist(nd); if (Math.abs(nd - fitTarget) < fitTarget * 0.002) fitTarget = null; }
+  controls.autoRotate = S.spin; controls.update();
+  const dist = camera.position.distanceTo(controls.target);
+  camera.near = dist * 0.005; camera.far = dist * 50; camera.updateProjectionMatrix();
+  nucleus.scale.setScalar(dist * 0.006);
+  axes.visible = S.axes;
+  renderer.render(scene, camera);
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  for (const a of axLabels) {
+    a.el.hidden = !S.axes; if (!S.axes) continue;
+    tmp.copy(a.v).multiplyScalar(axisLen * 1.06).project(camera);
+    if (tmp.z > 1 || tmp.z < -1) { a.el.style.visibility = 'hidden'; continue; }
+    a.el.style.visibility = '';
+    a.el.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px) translate(-50%,-50%)`;
+  }
+  const pxPer = h / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  let pick = NICE[0]; for (const v of NICE) if (v * pxPer <= 130) pick = v;
+  $('#qScaleBar').style.width = (pick * pxPer).toFixed(1) + 'px';
+  $('#qScaleTxt').textContent = pick < 0.1 ? `${+(pick * 100).toFixed(1)} pm` : `${pick} Å`;
+}
+
+/* ---------- radial chart ---------- */
+function niceStep(raw) { for (const s of [0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 20, 50]) if (s >= raw) return s; return 100; }
+const fmtR = (v, step) => step < 0.1 ? v.toFixed(2) : step < 1 ? (+v.toFixed(2)).toString() : v.toFixed(0);
+function drawChart() {
+  const q = getQ(), cv = $('#qChart'), w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement), C = v => css.getPropertyValue(v).trim();
+  const pad = {l: 12, r: 14, t: 26, b: 26}, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const xmax = q.rAt(0.995), NS = 420, ys = []; let ym = 0;
+  for (let i = 0; i <= NS; i++) { const r = xmax * i / NS, R = q.radial(r), p = r * r * R * R; ys.push(p); ym = Math.max(ym, p); }
+  const X = r => pad.l + r / xmax * pw, Y = p => pad.t + ph - p / ym * ph;
+  ctx.font = `500 10.5px ${C('--f-mono')}`; ctx.textBaseline = 'top';
+  const step = niceStep(xmax / 4.5);
+  for (let t = 0; t <= xmax + 1e-9; t += step) {
+    const x = X(t); ctx.strokeStyle = C('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + .5, pad.t); ctx.lineTo(x + .5, pad.t + ph); ctx.stroke();
+    ctx.fillStyle = C('--muted'); ctx.textAlign = t === 0 ? 'left' : 'center'; ctx.fillText(fmtR(t, step), x, pad.t + ph + 6);
+  }
+  ctx.textAlign = 'right'; ctx.fillText('r / Å', w - pad.r, 8);
+  // area
+  ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+  ys.forEach((p, i) => ctx.lineTo(X(xmax * i / NS), Y(p)));
+  ctx.lineTo(X(xmax), Y(0)); ctx.closePath();
+  const acc = C('--accent'); ctx.globalAlpha = 0.16; ctx.fillStyle = acc; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.beginPath(); ys.forEach((p, i) => { const x = X(xmax * i / NS), y = Y(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.strokeStyle = acc; ctx.lineWidth = 1.75; ctx.stroke();
+  ctx.strokeStyle = C('--fg'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad.l, pad.t + ph + .5); ctx.lineTo(pad.l + pw, pad.t + ph + .5); ctx.stroke();
+  // nodes
+  ctx.setLineDash([3, 3]); ctx.strokeStyle = C('--danger'); ctx.lineWidth = 1;
+  for (const r of q.nodes) { if (r > xmax) continue; const x = X(r); ctx.beginPath(); ctx.moveTo(x + .5, pad.t); ctx.lineTo(x + .5, pad.t + ph); ctx.stroke(); }
+  ctx.setLineDash([]);
+  // most probable radius
+  const xr = X(q.rmp), yr = Y(q.rmp * q.rmp * q.radial(q.rmp) ** 2);
+  ctx.fillStyle = C('--nucleus'); ctx.beginPath(); ctx.arc(xr, yr, 3.5, 0, Math.PI * 2); ctx.fill();
+  const lab = `r_max ${q.rmp.toFixed(2)} Å`; ctx.textBaseline = 'bottom';
+  const tw = ctx.measureText(lab).width; let lx = xr + 6; ctx.textAlign = 'left'; if (lx + tw > w - pad.r) { lx = xr - 6; ctx.textAlign = 'right'; }
+  ctx.fillText(lab, lx, Math.max(pad.t - 4 + 12, yr - 3));
+  // <r>
+  const xm = X(q.rMean); if (q.rMean <= xmax) { ctx.fillStyle = C('--fg'); ctx.beginPath(); ctx.moveTo(xm, pad.t + ph - 6); ctx.lineTo(xm - 4, pad.t + ph); ctx.lineTo(xm + 4, pad.t + ph); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = C('--muted'); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('▲ ⟨r⟩', pad.l, 8);
+}
+
+/* ---------- panel ---------- */
+function angDescr(q) {
+  const {l, am, real} = q, parts = [];
+  if (l === 0) return 'No angular nodes: a sphere';
+  if (real && am > 0) parts.push(`${am} plane${am > 1 ? 's' : ''} through the z axis`);
+  const c = l - am, flat = c % 2, cones = c - flat;
+  if (flat) parts.push('the xy plane');
+  if (cones) parts.push(`${cones} cone${cones > 1 ? 's' : ''} around z`);
+  if (!real && am > 0) parts.push('the z axis (a line)');
+  return parts.join(' · ');
+}
+function renderPanel() {
+  const {n, l, m, ms, Z} = S, q = getQ();
+  // pickers
+  $('#qN').innerHTML = [1,2,3,4,5,6,7].map(v => `<button type="button" data-n="${v}" aria-pressed="${v === n}">${v}</button>`).join('');
+  $('#qL').innerHTML = [0,1,2,3,4,5,6].map(v => `<button type="button" data-l="${v}" aria-pressed="${v === l}" ${v > n - 1 ? 'disabled' : ''} title="${v > n - 1 ? `Needs n ≥ ${v + 1}` : `${n}${LET[v]}`}">${v}<small>${LET[v]}</small></button>`).join('');
+  $('#qLcap').textContent = `Subshell ${n}${LET[l]} · ${SHAPE[l]} · allowed for n = ${n}: ${lList(n)}`;
+  let boxes = ''; for (let v = -l; v <= l; v++) { const on = v === m, nm = S.form === 'real' && rname(l, v); boxes += `<button type="button" class="qbox" data-m="${v}" aria-pressed="${on}" title="mₗ = ${fmtM(v)}${nm ? ` · ${n}${LET[l]}${nm}` : ''}"><span class="b">${on ? (ms > 0 ? '↑' : '↓') : ''}</span><small>${fmtM(v)}</small></button>`; }
+  $('#qM').innerHTML = boxes;
+  $('#qMcap').textContent = `Orientation: ${2 * l + 1} orbital${l ? 's' : ''} in ${n}${LET[l]}` + (S.form === 'real' && l > 0 && rname(l, m) ? ` · this one is ${n}${LET[l]}${rname(l, m)}` : '');
+  $('#qMs').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.ms === ms));
+  $('#qZ').value = Z; $('#qZOut').textContent = `${Z} · ${ionName(Z)}`;
+  // HUD
+  $('#qName').innerHTML = orbHTML(n, l, m, S.form);
+  $('#qTuple').innerHTML = `n=<b>${n}</b> · l=<b>${l}</b> · mₗ=<b>${fmtM(m)}</b> · mₛ=<b>${fmtMs(ms)}</b> ${ms > 0 ? '↑' : '↓'}`;
+  $('#qModeChip').innerHTML = (S.mode === 'lobe' ? `<b>Lobes</b> · ${S.level}% isosurface` : `<b>Electron cloud</b> · ${Math.round(9000 * S.density)} points`) + ` · ${S.form === 'real' ? 'real' : 'complex'}`;
+  $('#qLegend').innerHTML = S.form === 'real'
+    ? `<span><i style="background:${S.cPos}"></i>ψ &gt; 0</span><span><i style="background:${S.cNeg}"></i>ψ &lt; 0</span>`
+    : `<span><i class="wheel"></i>phase of ψ, 0 → 2π</span>`;
+  // readout
+  const E = -13.6057 * Z * Z / (n * n);
+  const nodeTxt = q.nodes.length ? `at r = ${q.nodes.map(r => r.toFixed(2)).join(', ')} Å` : 'none';
+  const rows = [
+    ['Quantum numbers', `(${n}, ${l}, ${fmtM(m)}, ${fmtMs(ms)})`, 'written as (n, l, mₗ, mₛ)'],
+    ['Orbital', orbHTML(n, l, m, S.form), S.form === 'real' ? (l ? `Real form, built from mₗ = ±${Math.abs(m) || 0}` : 'Spherical, mₗ = 0') : `Complex form, Lz = ${fmtM(m)}ħ`],
+    ['Radial nodes', `n − l − 1 = ${n - l - 1}`, nodeTxt],
+    ['Angular nodes', `l = ${l}`, angDescr(q)],
+    ['Energy', `${num(E, Math.abs(E) >= 10 ? 1 : 2)} eV`, `−13.6 eV · Z²/n², the same for every l when n = ${n}`],
+    ['Size', `⟨r⟩ = ${q.rMean.toFixed(2)} Å`, `most probable r = ${q.rmp.toFixed(2)} Å`],
+    ['Capacity', `${2 * (2 * l + 1)} e⁻ in ${n}${LET[l]}`, `shell n = ${n}: ${n * n} orbitals, ${2 * n * n} e⁻`],
+  ];
+  $('#qRead').innerHTML = rows.map(([k, v, s]) => `<dt>${k}</dt><dd>${v}<small>${s}</small></dd>`).join('');
+  // controls
+  $('#qForm2').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.form === S.form));
+  $('#qMode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === S.mode));
+  $('#qLevelCtl').hidden = S.mode !== 'lobe'; $('#qDensityCtl').hidden = S.mode !== 'cloud'; $('#qColors').hidden = S.form !== 'real';
+  $('#qLevelOut').textContent = S.level + '%'; $('#qDensityOut').textContent = Math.round(9000 * S.density) + ' pts'; $('#qOpacityOut').textContent = Math.round(S.opacity * 100) + '%';
+  drawChart();
+}
+function setQ(v, opts = {}) {
+  const shapeChanged = ['n', 'l', 'm', 'Z', 'form', 'mode', 'level', 'density', 'cPos', 'cNeg'].some(k => k in v && v[k] !== S[k]);
+  const sizeChanged = ['n', 'l', 'Z'].some(k => k in v && v[k] !== S[k]);
+  Object.assign(S, v);
+  if (S.l > S.n - 1) S.l = S.n - 1;
+  if (Math.abs(S.m) > S.l) S.m = Math.max(-S.l, Math.min(S.l, S.m));
+  save(); renderPanel();
+  if (!opts.keepInput) { $('#qQuick').value = `${S.n} ${S.l} ${S.m} ${S.ms > 0 ? '+1/2' : '-1/2'}`; $('#qHint').textContent = ''; $('#qQuick').removeAttribute('aria-invalid'); }
+  if (shapeChanged) rebuild(sizeChanged, opts.delay || 0);
+}
+function bindPanel() {
+  $('#qN').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setQ({n: +b.dataset.n}); });
+  $('#qL').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) setQ({l: +b.dataset.l}); });
+  $('#qM').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const v = +b.dataset.m; if (v === S.m) setQ({ms: -S.ms}); else setQ({m: v}); });
+  $('#qMs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setQ({ms: +b.dataset.ms}); });
+  $('#qForm').addEventListener('submit', e => {
+    e.preventDefault(); const r = parseQuick($('#qQuick').value);
+    if (r.err) { $('#qHint').textContent = r.err; $('#qQuick').setAttribute('aria-invalid', 'true'); return; }
+    $('#qHint').textContent = ''; $('#qQuick').removeAttribute('aria-invalid'); setQ(r.v, {keepInput: true});
+  });
+  $('#qQuick').addEventListener('input', () => { if ($('#qQuick').getAttribute('aria-invalid')) { $('#qQuick').removeAttribute('aria-invalid'); $('#qHint').textContent = ''; } });
+  $('#qZ').addEventListener('input', e => setQ({Z: +e.target.value}, {delay: 120}));
+  $('#qForm2').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setQ({form: b.dataset.form}); });
+  $('#qMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setQ({mode: b.dataset.mode}); });
+  const sl = (id, key, delay) => { const el = $('#' + id); el.value = S[key]; el.addEventListener('input', () => setQ({[key]: +el.value}, {delay, keepInput: true})); };
+  sl('qLevel', 'level', 60); sl('qDensity', 'density', 120);
+  const op = $('#qOpacity'); op.value = S.opacity;
+  op.addEventListener('input', () => {
+    S.opacity = +op.value; save(); renderPanel();
+    if (cur) cur.obj.traverse(o => { if (!o.material) return; if (o.isPoints) o.material.opacity = Math.min(1, 0.25 + S.opacity * 0.6); else { o.material.opacity = S.opacity; o.material.depthWrite = S.opacity > 0.96; } });
+  });
+  for (const [id, key] of [['qCPos', 'cPos'], ['qCNeg', 'cNeg']]) { const el = $('#' + id); el.value = S[key]; el.addEventListener('input', () => setQ({[key]: el.value}, {delay: 80, keepInput: true})); }
+  const tg = (id, key, fn) => { const el = $('#' + id); el.checked = S[key]; el.addEventListener('change', () => { S[key] = el.checked; save(); fn && fn(); }); };
+  tg('qAxes', 'axes'); tg('qSpin', 'spin');
+  tg('qCut', 'cut', () => { if (cur) cur.obj.traverse(o => { if (o.material) { o.material.clippingPlanes = clipList(); o.material.needsUpdate = true; } }); });
+  $('#qFit').addEventListener('click', () => fit(false));
+  $('#qReset').addEventListener('click', () => { controls.target.set(0, 0, 0); camera.position.copy(HOME).multiplyScalar(camera.position.length()); fit(true); });
+  new ResizeObserver(() => drawChart()).observe($('#qChart'));
+}
+function initQ() {
+  if (inited) return; inited = true;
+  initScene(); bindPanel();
+  setQ({}); rebuild(true);
+}
+
+/* ---------- router ---------- */
+function route() {
+  const v = location.hash === '#quantum' ? 'quantum' : location.hash === '#trends' ? 'trends' : 'orbitals';
+  document.documentElement.dataset.view = v;
+  $('#elApp').hidden = v !== 'orbitals'; $('#qApp').hidden = v !== 'quantum'; $('#tApp').hidden = v !== 'trends';
+  document.querySelectorAll('.tabs a').forEach(a => { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (v === 'quantum') initQ();
+  if (v === 'trends' && window.initTrends) window.initTrends();
+}
+window.addEventListener('hashchange', route);
+route();
+})();
+</script>
+
+<script>
+/* ===== periodic-trends page ===== */
+(() => {
+const $ = s => document.querySelector(s);
+const ls = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const MINUS = '−';
+
+/* ---------- data ---------- */
+// Covalent radii, pm (Cordero et al., Dalton Trans. 2008); Z = 1–96. Mn, Fe, Co: low-spin values.
+const RCOV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215,207,204,203,201,199,198,198,196,194,192,192,189,190,187,187,175,170,162,151,144,141,136,136,132,145,146,148,140,150,150,260,221,215,206,200,196,190,187,180,169];
+// First ionization energies, eV (NIST ASD); Z = 1–103.
+const IE1 = [13.598,24.587,5.392,9.323,8.298,11.260,14.534,13.618,17.423,21.565,5.139,7.646,5.986,8.152,10.487,10.360,12.968,15.760,4.341,6.113,6.561,6.828,6.746,6.767,7.434,7.902,7.881,7.640,7.726,9.394,5.999,7.900,9.815,9.752,11.814,14.000,4.177,5.695,6.217,6.634,6.759,7.092,7.119,7.361,7.459,8.337,7.576,8.994,5.786,7.344,8.608,9.010,10.451,12.130,3.894,5.212,5.577,5.539,5.464,5.525,5.582,5.644,5.670,6.150,5.864,5.939,6.022,6.108,6.184,6.254,5.426,6.825,7.550,7.864,7.834,8.438,8.967,8.959,9.226,10.438,6.108,7.417,7.286,8.414,9.318,10.749,4.073,5.279,5.380,6.307,5.89,6.194,6.266,6.026,5.974,5.991,6.198,6.282,6.368,6.50,6.58,6.626,4.96];
+// Electron affinities, eV (experimental). Missing = no reliable value.
+const EA = {1:0.754,3:0.618,5:0.280,6:1.262,8:1.461,9:3.401,11:0.548,13:0.433,14:1.390,15:0.746,16:2.077,17:3.613,19:0.501,20:0.025,21:0.188,22:0.079,23:0.525,24:0.666,26:0.153,27:0.662,28:1.156,29:1.235,31:0.301,32:1.233,33:0.804,34:2.021,35:3.364,37:0.486,38:0.052,39:0.307,40:0.433,41:0.917,42:0.747,43:0.55,44:1.05,45:1.137,46:0.562,47:1.304,49:0.384,50:1.112,51:1.047,52:1.971,53:3.059,55:0.472,56:0.145,57:0.558,72:0.178,73:0.323,74:0.816,75:0.06,76:1.078,77:1.564,78:2.125,79:2.309,81:0.320,82:0.357,83:0.942,85:2.416};
+// Anion not stable (EA ≤ 0).
+const UNBOUND = new Set([2,4,7,10,12,18,25,30,36,48,54,80,86]);
+
+const PROPS = {
+  radius: {name: 'Atomic radius', long: 'Covalent atomic radius', unit: 'pm', hue: 168, dec: 0,
+    get: Z => Z <= RCOV.length ? RCOV[Z - 1] : null,
+    note: '<b>Smaller across a period, larger down a group.</b> Across a period electrons enter the same shell while the nuclear charge rises, so Z<sub>eff</sub> grows and the atom is pulled in. Down a group each new shell sits farther out. The d-block is almost flat, and the lanthanide contraction makes 5d metals nearly the same size as 4d ones.',
+    ex: [{z: 3, h: 'period', t: 'Li → Ne', s: '128 → 58 pm'}, {z: 55, h: 'group', t: 'Group 1', s: 'H 31 → Cs 244 pm'}, {z: 72, h: 'group', t: 'Zr ≈ Hf', s: 'lanthanide contraction'}, {z: 26, h: 'period', t: 'Period 4 d-block', s: 'nearly flat'}]},
+  ie: {name: 'First ionization energy', long: 'First ionization energy', unit: 'eV', hue: 218, dec: 2,
+    get: Z => Z <= IE1.length ? IE1[Z - 1] : null,
+    note: '<b>Rises across a period, falls down a group</b>, so the tallest bars are at the top right (He, Ne, F). Two dips break the rise: <b>Be → B</b>, because boron’s electron comes from the higher-energy 2p; and <b>N → O</b>, because oxygen removes a paired 2p electron that is pushed out by repulsion.',
+    ex: [{z: 5, h: 'period', t: 'Be → B dip', s: '9.32 → 8.30 eV'}, {z: 8, h: 'period', t: 'N → O dip', s: '14.53 → 13.62 eV'}, {z: 2, h: 'group', t: 'Noble gases', s: 'He highest of all'}, {z: 55, h: 'group', t: 'Alkali metals', s: 'lowest in each period'}]},
+  ea: {name: 'Electron affinity', long: 'Electron affinity (energy released on adding e⁻)', unit: 'eV', hue: 32, dec: 3,
+    get: Z => Z in EA ? EA[Z] : null,
+    note: '<b>Largest at the halogens and generally higher toward the upper right, but far less regular</b> than radius or ionization energy. Cl beats F because fluorine’s small, crowded 2p shell repels the extra electron. Groups 2, 12 and 18 and nitrogen show <b>≤ 0</b> (short red tiles): their anions are not stable. Gold and platinum stand out among metals.',
+    ex: [{z: 17, h: 'group', t: 'Cl > F', s: '3.61 vs 3.40 eV'}, {z: 7, h: 'period', t: 'N ≤ 0', s: 'half-filled 2p'}, {z: 12, h: 'group', t: 'Group 2', s: 'anions unstable'}, {z: 79, h: 'period', t: 'Au', s: '2.31 eV, highest metal'}]}
+};
+
+/* ---------- table geometry ---------- */
+function ptPos(Z) {
+  if (Z === 1) return [1, 1]; if (Z === 2) return [1, 18];
+  if (Z <= 4) return [2, Z - 2]; if (Z <= 10) return [2, Z + 8];
+  if (Z <= 12) return [3, Z - 10]; if (Z <= 18) return [3, Z];
+  if (Z <= 36) return [4, Z - 18]; if (Z <= 54) return [5, Z - 36];
+  if (Z <= 56) return [6, Z - 54]; if (Z <= 71) return [9, Z - 54]; if (Z <= 86) return [6, Z - 68];
+  if (Z <= 88) return [7, Z - 86]; if (Z <= 103) return [10, Z - 86]; return [7, Z - 100];
+}
+const periodOf = Z => Z <= 2 ? 1 : Z <= 10 ? 2 : Z <= 18 ? 3 : Z <= 36 ? 4 : Z <= 54 ? 5 : Z <= 86 ? 6 : 7;
+const groupOf = Z => { const [r, g] = ptPos(Z); return r <= 7 ? g : null; };
+function blockOf(Z) {
+  const [r, g] = ptPos(Z);
+  if (r > 7) return 'f'; if (Z === 2) return 's';
+  return g <= 2 ? 's' : g >= 13 ? 'p' : 'd';
+}
+const rowOf = r => r <= 7 ? r - 1 : r - 1.5;              // f rows sit after a half-row gap
+const MARGIN = 0.5, COLS = 18, ROWS = 9.5;                 // a half-cell margin on top and left carries group/period numbers
+const cellX = g => g - 9.5;
+const cellZ = r => rowOf(r) + 0.5 - ROWS / 2;
+const POS = []; for (let Z = 1; Z <= 118; Z++) { const [r, g] = ptPos(Z); POS[Z] = {r, g, x: cellX(g), z: cellZ(r)}; }
+
+const BLOCK_RGB = {s: '#E98AA0', p: '#E6B46A', d: '#7EA2F0', f: '#79C9A0'};
+const BLOCK_TINT = {s: 'rgba(255,128,150,.16)', p: 'rgba(255,196,110,.15)', d: 'rgba(120,165,255,.17)', f: 'rgba(130,220,170,.15)'};
+const H_MAX = 5.5, FOOT = 0.58, BAR_DZ = -0.13;
+
+/* ---------- state ---------- */
+const DEF = {prop: 'ie', view: '3d', Z: 11, hl: 'none', block: false, spin: false};
+const S = {...DEF}; try { Object.assign(S, JSON.parse(ls.get('trends-view') || '{}')); } catch (e) {}
+if (!PROPS[S.prop]) S.prop = 'ie';
+const save = () => ls.set('trends-view', JSON.stringify(S));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- helpers ---------- */
+const P = () => PROPS[S.prop];
+const val = Z => P().get(Z);
+const fmt = (v, p = P()) => v == null ? '—' : (v < 0 ? MINUS : '') + Math.abs(v).toFixed(p.dec);
+const maxOf = p => { let m = 0; for (let Z = 1; Z <= 118; Z++) { const v = p.get(Z); if (v != null && v > m) m = v; } return m; };
+const minOf = p => { let m = Infinity; for (let Z = 1; Z <= 118; Z++) { const v = p.get(Z); if (v != null && v < m) m = v; } return m; };
+function rampColor(t, hue) {        // one hue, dim → bright on the dark field
+  const c = new THREE.Color(); c.setHSL(hue / 360, 0.42 + 0.4 * t, 0.2 + 0.56 * t); return c;
+}
+function rankOf(Z) {
+  const v = val(Z); if (v == null) return null;
+  let rank = 1, n = 0; for (let k = 1; k <= 118; k++) { const w = val(k); if (w == null) continue; n++; if (w > v) rank++; }
+  return {rank, n};
+}
+function membersOf(kind, Z) {
+  const out = [];
+  if (kind === 'period') { const p = periodOf(Z); for (let k = 1; k <= 118; k++) if (periodOf(k) === p) out.push(k); }
+  else if (kind === 'group') { const g = groupOf(Z); if (g != null) for (let k = 1; k <= 118; k++) if (groupOf(k) === g) out.push(k); }
+  return out;
+}
+
+/* ---------- scene ---------- */
+let inited = false, renderer, scene, camera, controls, viewer, bars = [], ground, camTween = null;
+const cur = new Float32Array(119), target = new Float32Array(119);
+const CENTER = new THREE.Vector3(0, 1.4, 0.2);
+const VIEWS = {
+  '3d':  {pos: [7.5, 12.5, 16.5]},
+  front: {pos: [0, 3.2, 27]},
+  side:  {pos: [-27, 3.4, 0.2]},
+  top:   {pos: [0, 25, 0.21]}
+};
+
+function drawGround() {
+  const SZ = 128, cv = document.createElement('canvas');
+  cv.width = (COLS + MARGIN) * SZ; cv.height = (ROWS + MARGIN) * SZ;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#0D1117'; g.fillRect(0, 0, cv.width, cv.height);
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  const ox = MARGIN * SZ, oy = MARGIN * SZ;
+  for (let Z = 1; Z <= 118; Z++) {
+    const {r, g: col} = POS[Z], x = ox + (col - 1) * SZ, y = oy + rowOf(r) * SZ;
+    rr(x + 4, y + 4, SZ - 8, SZ - 8, 10);
+    g.fillStyle = '#141A23'; g.fill(); g.fillStyle = BLOCK_TINT[blockOf(Z)]; g.fill();
+    g.strokeStyle = '#2A3240'; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#E3E6EB'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    g.font = '700 34px Archivo, "IBM Plex Sans", sans-serif'; g.fillText(SYM[Z - 1], x + SZ / 2, y + SZ - 13);
+    g.fillStyle = '#8A93A1'; g.textAlign = 'left'; g.font = '500 17px "IBM Plex Mono", monospace'; g.fillText(Z, x + 10, y + 24);
+  }
+  g.setLineDash([8, 6]); g.strokeStyle = '#2A3240'; g.lineWidth = 2;
+  [[6, '57–71'], [7, '89–103']].forEach(([r, t]) => {
+    const x = ox + 2 * SZ, y = oy + rowOf(r) * SZ; rr(x + 4, y + 4, SZ - 8, SZ - 8, 10); g.stroke();
+    g.fillStyle = '#8A93A1'; g.textAlign = 'center'; g.font = '500 20px "IBM Plex Mono", monospace'; g.fillText(t, x + SZ / 2, y + SZ / 2 + 7);
+  });
+  g.setLineDash([]);
+  g.fillStyle = '#8A93A1'; g.textAlign = 'center'; g.font = '600 26px "IBM Plex Mono", monospace';
+  for (let c = 1; c <= 18; c++) g.fillText(c, ox + (c - 0.5) * SZ, oy - 18);
+  for (let r = 1; r <= 7; r++) g.fillText(r, ox / 2, oy + (r - 0.5) * SZ + 9);
+  g.font = '500 22px "IBM Plex Sans", sans-serif'; g.textAlign = 'right';
+  g.fillText('Lanthanides', ox + 2 * SZ - 14, oy + (rowOf(9) + 0.5) * SZ + 8);
+  g.fillText('Actinides', ox + 2 * SZ - 14, oy + (rowOf(10) + 0.5) * SZ + 8);
+  g.textAlign = 'left'; g.fillText('Group →', ox - 6, oy - 52);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (ground.material.map) ground.material.map.dispose();
+  ground.material.map = tex; ground.material.needsUpdate = true;
+}
+
+function initScene() {
+  viewer = $('#tViewer');
+  renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  viewer.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(32, 1, 0.1, 400);
+  camera.position.set(...VIEWS['3d'].pos);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.copy(CENTER); controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.minDistance = 4; controls.maxDistance = 80; controls.maxPolarAngle = Math.PI / 2 - 0.02; controls.autoRotateSpeed = 0.8;
+  controls.addEventListener('start', () => { camTween = null; markView(null); });
+  scene.add(new THREE.HemisphereLight(0xe6edff, 0x141821, 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 0.75); key.position.set(-6, 14, 9); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xa9c1ff, 0.25); fill.position.set(8, 4, -6); scene.add(fill);
+
+  const W = COLS + MARGIN, H = ROWS + MARGIN;
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({color: 0xffffff}));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(cellX(1) - 0.5 - MARGIN + W / 2, 0, cellZ(1) - 0.5 - MARGIN + H / 2);
+  scene.add(ground);
+  drawGround(); if (document.fonts) document.fonts.ready.then(drawGround);
+
+  const geo = new THREE.BoxGeometry(FOOT, 1, FOOT); geo.translate(0, 0.5, 0);
+  for (let Z = 1; Z <= 118; Z++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.55, metalness: 0.05, transparent: true, opacity: 1}));
+    m.position.set(POS[Z].x, 0, POS[Z].z + BAR_DZ); m.scale.y = 0.001; m.visible = false; m.userData.Z = Z;
+    scene.add(m); bars[Z] = m;
+  }
+  const resize = () => { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(viewer); resize();
+  bindPointer();
+  loop();
+}
+
+function applyBars() {
+  const p = P(), mx = maxOf(p), mn = Math.min(0, minOf(p));
+  const members = S.hl !== 'none' ? new Set(membersOf(S.hl, S.Z)) : null;
+  for (let Z = 1; Z <= 118; Z++) {
+    const m = bars[Z], v = p.get(Z), unb = S.prop === 'ea' && UNBOUND.has(Z);
+    let h = 0, col;
+    if (v != null) { h = Math.max(0.02, (v / mx) * H_MAX); col = S.block ? new THREE.Color(BLOCK_RGB[blockOf(Z)]) : rampColor((v - mn) / (mx - mn), p.hue); }
+    else if (unb) { h = 0.05; col = new THREE.Color('#FF8A80'); }
+    target[Z] = h; m.userData.has = v != null || unb;
+    if (col) m.material.color.copy(col);
+    const dim = members && !members.has(Z);
+    m.material.opacity = dim ? 0.13 : 1; m.material.depthWrite = !dim;
+    if (Z === S.Z) m.material.emissive.setHex(0x22305a); else m.material.emissive.setHex(0x000000);
+    if (reduced) cur[Z] = h;
+  }
+}
+
+function setView(v, animate = true) {
+  S.view = v; save(); markView(v);
+  const to = new THREE.Vector3(...VIEWS[v].pos);
+  if (!animate || reduced) { camera.position.copy(to); controls.target.copy(CENTER); camTween = null; return; }
+  camTween = {t: 0, from: camera.position.clone(), fromT: controls.target.clone(), to};
+}
+function markView(v) { document.querySelectorAll('#tView button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === v))); }
+
+let tipZ = null, selEl;
+function loop() {
+  requestAnimationFrame(loop);
+  if ($('#tApp').hidden) return;
+  if (camTween) {
+    camTween.t = Math.min(1, camTween.t + 0.045); const e = 1 - Math.pow(1 - camTween.t, 3);
+    // move along a spherical path around the target so the camera never dives through the bars
+    const a = camTween.from.clone().sub(CENTER), b = camTween.to.clone().sub(CENTER);
+    const ra = a.length(), rb = b.length(); a.normalize(); b.normalize();
+    const dir = a.clone().lerp(b, e); if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0); dir.normalize();
+    camera.position.copy(CENTER).addScaledVector(dir, ra + (rb - ra) * e);
+    controls.target.lerpVectors(camTween.fromT, CENTER, e);
+    if (camTween.t >= 1) camTween = null;
+  }
+  controls.autoRotate = S.spin && !camTween;
+  for (let Z = 1; Z <= 118; Z++) {
+    const d = target[Z] - cur[Z]; cur[Z] = Math.abs(d) < 1e-3 ? target[Z] : cur[Z] + d * 0.14;
+    const m = bars[Z]; m.scale.y = Math.max(cur[Z], 0.001); m.visible = m.userData.has || cur[Z] > 0.01;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  // selected label
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  const v = new THREE.Vector3(POS[S.Z].x, cur[S.Z] + 0.05, POS[S.Z].z + BAR_DZ).project(camera);
+  if (v.z < 1) { selEl.hidden = false; selEl.style.transform = `translate(${(v.x + 1) / 2 * w}px,${(1 - v.y) / 2 * h}px) translate(-50%,-130%)`; } else selEl.hidden = true;
+}
+
+/* ---------- picking ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(bars.filter(b => b && b.visible && b.material.opacity > 0.5));
+  if (hits.length) return hits[0].object.userData.Z;
+  const o = ray.ray.origin, d = ray.ray.direction; if (Math.abs(d.y) < 1e-6) return null;
+  const t = -o.y / d.y; if (t < 0) return null;
+  const x = o.x + d.x * t, z = o.z + d.z * t;
+  for (let Z = 1; Z <= 118; Z++) if (Math.abs(x - POS[Z].x) < 0.5 && Math.abs(z - POS[Z].z) < 0.5) return Z;
+  return null;
+}
+function bindPointer() {
+  const el = renderer.domElement, tip = $('#tTip'); let down = null;
+  el.addEventListener('pointermove', ev => {
+    if (ev.pointerType === 'touch') return;
+    const Z = pick(ev);
+    if (Z == null) { tip.hidden = true; tipZ = null; el.style.cursor = ''; return; }
+    el.style.cursor = 'pointer';
+    if (Z !== tipZ) { tipZ = Z; tip.innerHTML = tipHTML(Z); }
+    const r = viewer.getBoundingClientRect(); tip.hidden = false;
+    const x = Math.min(ev.clientX - r.left + 14, r.width - tip.offsetWidth - 8), y = Math.max(ev.clientY - r.top - tip.offsetHeight - 10, 8);
+    tip.style.transform = `translate(${x}px,${y}px)`;
+  });
+  el.addEventListener('pointerleave', () => { tip.hidden = true; tipZ = null; });
+  el.addEventListener('pointerdown', ev => { down = [ev.clientX, ev.clientY]; });
+  el.addEventListener('pointerup', ev => {
+    if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return; down = null;
+    const Z = pick(ev); if (Z != null) select(Z);
+  });
+}
+function valueText(Z, p = P()) {
+  const v = p.get(Z);
+  if (v != null) return `${fmt(v, p)} ${p.unit}`;
+  if (S.prop === 'ea' && UNBOUND.has(Z)) return '≤ 0 (anion unstable)';
+  return 'no data';
+}
+const tipHTML = Z => `<b>${Z} ${SYM[Z - 1]}</b> <span>${EN[Z - 1]}</span><br>${valueText(Z)}`;
+
+/* ---------- panel ---------- */
+function select(Z, hl) {
+  S.Z = Z; if (hl) S.hl = hl;
+  if (S.hl === 'group' && groupOf(Z) == null) S.hl = 'period';
+  save(); render();
+}
+function render() {
+  const p = P(), Z = S.Z;
+  document.querySelectorAll('#tProp button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.p === S.prop)));
+  $('#tTitle').textContent = p.name;
+  $('#tSub').innerHTML = `bar height ∝ value · <b>${p.unit}</b>`;
+  // legend
+  const mx = maxOf(p), mn = Math.min(0, minOf(p));
+  const stops = [0, .25, .5, .75, 1].map(t => '#' + rampColor(t, p.hue).getHexString()).join(',');
+  let keys = '';
+  if (S.block) keys = Object.entries(BLOCK_RGB).map(([k, c]) => `<span><i style="background:${c}"></i>${k}-block</span>`).join('');
+  if (S.prop === 'ea') keys += `<span><i style="background:#FF8A80"></i>≤ 0</span>`;
+  keys += `<span><i style="background:#141A23;border:1px solid #2A3240"></i>no data</span>`;
+  $('#tLegend').innerHTML = (S.block ? '' : `<div class="ramp" style="background:linear-gradient(90deg,${stops})"></div><div class="ends"><span>${fmt(mn, p)}</span><span>${fmt(mx, p)} ${p.unit}</span></div>`) + `<div class="keys">${keys}</div>`;
+  // element card
+  $('#tZ').textContent = Z; $('#tSym').textContent = SYM[Z - 1]; $('#tName').textContent = EN[Z - 1];
+  const v = p.get(Z), tv = $('#tVal');
+  if (v != null) { tv.className = 'tval'; tv.innerHTML = `${fmt(v, p)}<small>${p.unit}</small>`; }
+  else { tv.className = 'tval na'; tv.textContent = valueText(Z); }
+  const rk = rankOf(Z), g = groupOf(Z);
+  let meta = `Period <b>${periodOf(Z)}</b> · ${g ? `Group <b>${g}</b>` : '<b>f-block</b>'} · ${blockOf(Z)}-block`;
+  if (v != null && p.unit === 'eV') meta += `<br>${fmt(v * 96.485, {dec: 0})} kJ/mol`;
+  if (rk) meta += `<br>Rank <b>${rk.rank}</b> of ${rk.n} (highest = 1)`;
+  $('#tMeta').innerHTML = meta;
+  selEl.textContent = SYM[Z - 1];
+  $('#tHlP').textContent = `Period ${periodOf(Z)}`;
+  $('#tHlG').textContent = g ? `Group ${g}` : 'Group —'; $('#tHlG').disabled = !g;
+  document.querySelectorAll('#tHl button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.h === S.hl)));
+  // trend notes
+  $('#tNote').innerHTML = p.note;
+  $('#tEx').innerHTML = p.ex.map((e, i) => `<button type="button" data-i="${i}">${e.t}<small>${e.s}</small></button>`).join('');
+  $('#tSrc').innerHTML = S.prop === 'radius'
+    ? '<b>Data.</b> Covalent radii (Cordero et al., 2008), available for Z = 1–96; Mn, Fe and Co use low-spin values. Noble-gas values come from their few known compounds, so treat them with care.'
+    : S.prop === 'ie' ? '<b>Data.</b> First ionization energies from the NIST Atomic Spectra Database, available for Z = 1–103. 1 eV = 96.485 kJ/mol.'
+    : '<b>Data.</b> Experimental electron affinities (energy released when a gaseous atom gains one electron). Most lanthanides, actinides and superheavy elements have no reliable measured value and are left empty.';
+  $('#tBlock').checked = S.block; $('#tSpin').checked = S.spin;
+  if (inited) applyBars();
+  drawCharts();
+}
+
+/* ---------- mini charts ---------- */
+const chartState = {};
+function drawChart(id, list, readId) {
+  const cv = $(id), dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const p = P(), mx = maxOf(p), L = 34, R = 10, T = 12, B = 22, iw = W - L - R, ih = H - T - B;
+  const n = list.length, xs = i => L + (n === 1 ? iw / 2 : i * iw / (n - 1)), ys = v => T + ih - Math.max(0, v) / mx * ih;
+  g.font = '500 10px "IBM Plex Mono", monospace'; g.fillStyle = '#8A93A1'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  g.strokeStyle = '#1E2530'; g.lineWidth = 1;
+  [0, 0.5, 1].forEach(t => { const y = T + ih - t * ih; g.beginPath(); g.moveTo(L, y + .5); g.lineTo(W - R, y + .5); g.stroke(); g.fillText(fmt(mx * t, {dec: p.dec ? 1 : 0}), L - 5, y); });
+  const color = '#' + rampColor(0.85, p.hue).getHexString();
+  g.strokeStyle = color; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath(); let open = false;
+  list.forEach((Z, i) => { const v = p.get(Z); if (v == null) { open = false; return; } const x = xs(i), y = ys(v); if (open) g.lineTo(x, y); else g.moveTo(x, y); open = true; });
+  g.stroke();
+  const st = chartState[id] || {}; const hov = st.hover;
+  const every = n > 18 ? 2 : 1;
+  list.forEach((Z, i) => {
+    const v = p.get(Z), x = xs(i), sel = Z === S.Z, unb = S.prop === 'ea' && UNBOUND.has(Z);
+    if (v != null) { g.beginPath(); g.arc(x, ys(v), sel ? 5 : 3.2, 0, 7); g.fillStyle = sel ? '#E3E6EB' : color; g.fill(); if (sel) { g.strokeStyle = '#0A0D12'; g.lineWidth = 2; g.stroke(); } }
+    else if (unb) { g.strokeStyle = '#FF8A80'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 4, ys(0) - 0.5); g.lineTo(x + 4, ys(0) - 0.5); g.stroke(); }
+    if (sel || hov === i || i % every === 0 || i === n - 1) {
+      g.fillStyle = sel || hov === i ? '#E3E6EB' : '#8A93A1'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+      g.font = `${sel ? 600 : 500} ${n > 18 ? 9 : 10.5}px "IBM Plex Mono", monospace`; g.fillText(SYM[Z - 1], x, H - 7);
+    }
+  });
+  if (hov != null) { const x = xs(hov); g.strokeStyle = 'rgba(169,193,255,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + .5, T); g.lineTo(x + .5, T + ih); g.stroke(); }
+  chartState[id] = {...st, list, xs, n};
+  const shown = hov != null ? list[hov] : S.Z;
+  $(readId).textContent = list.includes(shown) ? `${SYM[shown - 1]} ${valueText(shown)}` : '';
+}
+function drawCharts() {
+  const Z = S.Z, pl = membersOf('period', Z), gl = membersOf('group', Z);
+  $('#tPcap').textContent = `Across period ${periodOf(Z)}`;
+  drawChart('#tPchart', pl, '#tPread');
+  const g = groupOf(Z);
+  $('#tGcap').textContent = g ? `Down group ${g}` : 'Down a group';
+  if (g) { $('#tGchart').hidden = false; drawChart('#tGchart', gl, '#tGread'); }
+  else { $('#tGchart').hidden = true; $('#tGread').textContent = 'f-block elements have no group number'; }
+}
+function bindChart(id, readId) {
+  const cv = $(id);
+  const idx = ev => { const st = chartState[id]; if (!st || !st.n) return null; const r = cv.getBoundingClientRect(), x = ev.clientX - r.left; let best = 0, bd = 1e9; for (let i = 0; i < st.n; i++) { const d = Math.abs(st.xs(i) - x); if (d < bd) { bd = d; best = i; } } return best; };
+  cv.addEventListener('pointermove', ev => { if (!chartState[id]) return; const i = idx(ev); if (chartState[id].hover !== i) { chartState[id].hover = i; drawChart(id, chartState[id].list, readId); } });
+  cv.addEventListener('pointerleave', () => { if (!chartState[id]) return; chartState[id].hover = null; drawChart(id, chartState[id].list, readId); });
+  cv.addEventListener('click', ev => { const i = idx(ev); if (i == null) return; chartState[id].hover = null; select(chartState[id].list[i]); });
+}
+
+/* ---------- wiring ---------- */
+function bindPanel() {
+  selEl = $('#tSel');
+  $('#tProp').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.prop = b.dataset.p; save(); render(); });
+  $('#tView').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const v = b.dataset.v;
+    if (S.hl === 'none' && v === 'front') S.hl = 'period';
+    if (S.hl === 'none' && v === 'side' && groupOf(S.Z)) S.hl = 'group';
+    setView(v); save(); render();
+  });
+  $('#tHl').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.hl = b.dataset.h; save(); render(); });
+  $('#tBlock').addEventListener('change', e => { S.block = e.target.checked; save(); render(); });
+  $('#tSpin').addEventListener('change', e => { S.spin = e.target.checked; save(); });
+  $('#tReset').addEventListener('click', () => setView(S.view in VIEWS ? S.view : '3d'));
+  $('#tEx').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; const ex = P().ex[+b.dataset.i];
+    S.Z = ex.z; S.hl = ex.h; save();
+    setView(ex.h === 'group' ? 'side' : 'front'); render();
+  });
+  bindChart('#tPchart', '#tPread'); bindChart('#tGchart', '#tGread');
+  new ResizeObserver(() => drawCharts()).observe($('#tPchart'));
+}
+window.initTrends = function () {
+  if (inited) { drawCharts(); return; }
+  bindPanel(); initScene(); inited = true;
+  setView(S.view in VIEWS ? S.view : '3d', false);
+  render();
+};
+if (location.hash === '#trends') window.initTrends();
+})();
+</script>
+</body></html>
