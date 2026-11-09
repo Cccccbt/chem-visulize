@@ -99,7 +99,6 @@ button{cursor:pointer}
 .pt-grid{display:grid;grid-template-columns:20px repeat(18,minmax(48px,1fr));grid-template-rows:auto repeat(7,auto) 12px auto auto;gap:3px;min-width:940px;max-width:1280px;margin:0 auto}
 .pt-cell{position:relative;aspect-ratio:1/1.12;border:1px solid var(--line);border-radius:4px;background:var(--bk);box-shadow:inset 0 2px 0 var(--bkc);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 3px;min-width:0;color:var(--fg);transition:opacity .15s}
 .pt-cell .z{position:absolute;top:3px;left:4px;font:500 9.5px/1 var(--f-mono);color:var(--muted)}
-.pt-cell .ra{position:absolute;top:2px;right:3px;font-size:9px;line-height:1;color:var(--nucleus);opacity:.8}
 .pt-cell .s{font:700 clamp(14px,1.45vw,20px)/1 var(--f-display);font-stretch:85%;margin-top:7px}
 .pt-cell .nm{font:500 9px/1.15 var(--f-display);font-stretch:68%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .pt-cell .m{font:400 8.5px/1.1 var(--f-mono);color:var(--muted);letter-spacing:-.02em}
@@ -801,16 +800,16 @@ if (typeof module !== 'undefined') module.exports = {SYM, CN, configOf, displayK
 // Standard atomic weights (IUPAC, abridged). Strings in [ ] are the mass number of the longest-lived known isotope (no stable isotopes).
 const MASS = "1.008 4.0026 6.94 9.0122 10.81 12.011 14.007 15.999 18.998 20.180 22.990 24.305 26.982 28.085 30.974 32.06 35.45 39.95 39.098 40.078 44.956 47.867 50.942 51.996 54.938 55.845 58.933 58.693 63.546 65.38 69.723 72.630 74.922 78.971 79.904 83.798 85.468 87.62 88.906 91.224 92.906 95.95 [98] 101.07 102.91 106.42 107.87 112.41 114.82 118.71 121.76 127.60 126.90 131.29 132.91 137.33 138.91 140.12 140.91 144.24 [145] 150.36 151.96 157.25 158.93 162.50 164.93 167.26 168.93 173.05 174.97 178.49 180.95 183.84 186.21 190.23 192.22 195.08 196.97 200.59 204.38 207.2 208.98 [209] [210] [222] [223] [226] [227] 232.04 231.04 238.03 [237] [244] [243] [247] [247] [251] [252] [257] [258] [259] [266] [267] [268] [269] [270] [269] [278] [281] [282] [285] [286] [289] [290] [293] [294] [294]".split(' ');
 const CATS = {
-  alkali:   {name: 'Alkali metal',          cn: '碱金属',     hue: 352},
-  alkaline: {name: 'Alkaline earth metal',  cn: '碱土金属',   hue: 28},
-  trans:    {name: 'Transition metal',      cn: '过渡金属',   hue: 218},
-  post:     {name: 'Post-transition metal', cn: '后过渡金属', hue: 190},
-  metalloid:{name: 'Metalloid',             cn: '类金属',     hue: 160},
-  nonmetal: {name: 'Reactive nonmetal',     cn: '非金属',     hue: 95},
-  halogen:  {name: 'Halogen',               cn: '卤素',       hue: 55},
-  noble:    {name: 'Noble gas',             cn: '稀有气体',   hue: 275},
-  lan:      {name: 'Lanthanide',            cn: '镧系',       hue: 320},
-  act:      {name: 'Actinide',              cn: '锕系',       hue: 300}
+  alkali:   {name: 'Alkali metal',     hue: 352},
+  alkaline: {name: 'Alkaline earth metal',   hue: 28},
+  trans:    {name: 'Transition metal',   hue: 218},
+  post:     {name: 'Post-transition metal', hue: 190},
+  metalloid:{name: 'Metalloid',     hue: 160},
+  nonmetal: {name: 'Reactive nonmetal',     hue: 95},
+  halogen:  {name: 'Halogen',       hue: 55},
+  noble:    {name: 'Noble gas',   hue: 275},
+  lan:      {name: 'Lanthanide',       hue: 320},
+  act:      {name: 'Actinide',       hue: 300}
 };
 function catOf(Z) {
   if ([3,11,19,37,55,87].includes(Z)) return 'alkali';
@@ -826,8 +825,6 @@ function catOf(Z) {
 }
 // Phase at 25 °C, 1 atm. Z ≥ 100 have never been made in bulk.
 const stateOf = Z => [1,2,7,8,9,10,17,18,36,54,86].includes(Z) ? 'gas' : (Z === 35 || Z === 80) ? 'liquid' : Z >= 100 ? 'unknown' : 'solid';
-const radioactive = Z => Z === 43 || Z === 61 || Z >= 84;
-const CN_EL = Z => CN[Z - 1] || '';
 // Covalent radii, pm (Cordero et al., Dalton Trans. 2008); Z = 1–96. Mn, Fe, Co: low-spin values.
 const RCOV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215,207,204,203,201,199,198,198,196,194,192,192,189,190,187,187,175,170,162,151,144,141,136,136,132,145,146,148,140,150,150,260,221,215,206,200,196,190,187,180,169];
 // First ionization energies, eV (NIST ASD); Z = 1–103.
@@ -1194,7 +1191,7 @@ function neutralCfgText(Z) {
   return (core ? `[${SYM[core - 1]}] ` : '') + displayKeys(c).filter(k => cc.get(k) !== c.get(k)).map(k => k + SUP(c.get(k))).join(' ');
 }
 const GROUP_CAS = ['IA','IIA','IIIB','IVB','VB','VIB','VIIB','VIIIB','VIIIB','VIIIB','IB','IIB','IIIA','IVA','VA','VIA','VIIA','VIIIA'];
-const PHASES = {solid: {name: 'Solid', cn: '固态', c: 'hsl(215 12% 70% / .12)', a: 'hsl(215 12% 70%)'}, liquid: {name: 'Liquid', cn: '液态', c: 'hsl(195 85% 60% / .2)', a: 'hsl(195 85% 62%)'}, gas: {name: 'Gas', cn: '气态', c: 'hsl(350 80% 66% / .18)', a: 'hsl(350 80% 68%)'}, unknown: {name: 'Unknown', cn: '未知', c: 'transparent', a: 'var(--line)'}};
+const PHASES = {solid: {name: 'Solid', c: 'hsl(215 12% 70% / .12)', a: 'hsl(215 12% 70%)'}, liquid: {name: 'Liquid', c: 'hsl(195 85% 60% / .2)', a: 'hsl(195 85% 62%)'}, gas: {name: 'Gas', c: 'hsl(350 80% 66% / .18)', a: 'hsl(350 80% 68%)'}, unknown: {name: 'Unknown', c: 'transparent', a: 'var(--line)'}};
 const BLOCKS = {s: {name: 's-block', h: 350}, p: {name: 'p-block', h: 36}, d: {name: 'd-block', h: 220}, f: {name: 'f-block', h: 150}};
 const ptColor = (mode, key) => mode === 'cat' ? [`hsl(${CATS[key].hue} 70% 62% / .15)`, `hsl(${CATS[key].hue} 72% 64%)`]
   : mode === 'block' ? [`var(--bk-${key})`, `hsl(${BLOCKS[key].h} 75% 70%)`] : [PHASES[key].c, PHASES[key].a];
@@ -1206,11 +1203,11 @@ const ptFmt = (v, d, u) => v == null ? '—' : v.toFixed(d) + (u ? ' ' + u : '')
   for (let g = 1; g <= 18; g++) html += `<div class="pt-gn" style="grid-row:1;grid-column:${g + 1}"><span>${g}<small>${GROUP_CAS[g - 1]}</small></span></div>`;
   for (let p = 1; p <= 7; p++) html += `<div class="pt-pn" style="grid-row:${p + 1};grid-column:1">${p}</div>`;
   for (let Z = 1; Z <= 118; Z++) {
-    const [r, g] = ptPos(Z), st = stateOf(Z), lab = `${Z} ${EN[Z - 1]} ${CN_EL(Z)}, ${MASS[Z - 1]}`;
-    html += `<button type="button" class="pt-cell${st === 'unknown' ? ' unk' : ''}" data-z="${Z}" style="${at(r, g)}" title="${lab}" aria-label="${lab}"><span class="z">${Z}</span>${radioactive(Z) ? '<span class="ra" aria-hidden="true">☢</span>' : ''}<span class="s">${SYM[Z - 1]}</span><span class="nm">${EN[Z - 1]}</span><span class="m">${MASS[Z - 1]}</span></button>`;
+    const [r, g] = ptPos(Z), st = stateOf(Z), lab = `${Z} ${EN[Z - 1]}, ${MASS[Z - 1]}`;
+    html += `<button type="button" class="pt-cell${st === 'unknown' ? ' unk' : ''}" data-z="${Z}" style="${at(r, g)}" title="${lab}" aria-label="${lab}"><span class="z">${Z}</span><span class="s">${SYM[Z - 1]}</span><span class="nm">${EN[Z - 1]}</span><span class="m">${MASS[Z - 1]}</span></button>`;
   }
   html += `<div class="pt-ph" data-k="lan" style="${at(6, 3)}">57–71</div><div class="pt-ph" data-k="act" style="${at(7, 3)}">89–103</div>`;
-  html += `<div class="pt-flab" style="grid-row:10">Lanthanides 镧系</div><div class="pt-flab" style="grid-row:11">Actinides 锕系</div>`;
+  html += `<div class="pt-flab" style="grid-row:10">Lanthanides</div><div class="pt-flab" style="grid-row:11">Actinides</div>`;
   html += `<div class="pt-card" id="ptCard" aria-live="polite"></div>`;
   grid.innerHTML = html;
   const cells = [...grid.querySelectorAll('.pt-cell')], phs = [...grid.querySelectorAll('.pt-ph')];
@@ -1223,9 +1220,9 @@ const ptFmt = (v, d, u) => v == null ? '—' : v.toFixed(d) + (u ? ' ' + u : '')
     phs.forEach(d => { d.dataset.key = mode === 'cat' ? d.dataset.k : mode === 'block' ? 'f' : 'solid'; paint(d); });
     $('#ptMode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
     const keys = mode === 'cat' ? Object.keys(CATS) : mode === 'block' ? Object.keys(BLOCKS) : Object.keys(PHASES);
-    const name = k => mode === 'cat' ? `${CATS[k].name} ${CATS[k].cn}` : mode === 'block' ? BLOCKS[k].name : `${PHASES[k].name} ${PHASES[k].cn}`;
+    const name = k => mode === 'cat' ? CATS[k].name : mode === 'block' ? BLOCKS[k].name : PHASES[k].name;
     $('#ptLegend').innerHTML = keys.map(k => { const [bk, bkc] = ptColor(mode, k); return `<button type="button" data-key="${k}"><i style="--bk:${bk};--bkc:${bkc}"></i>${name(k)}</button>`; }).join('')
-      + (mode === 'state' ? '<span class="pc-hint" style="align-self:center">Phase at 25 °C, 1 atm</span>' : '') + '<span class="pc-hint" style="align-self:center">☢ no stable isotope</span>';
+      + (mode === 'state' ? '<span class="pc-hint" style="align-self:center">Phase at 25 °C, 1 atm</span>' : '');
     info(shown);
   }
   let shown = state.Z;
@@ -1235,11 +1232,11 @@ const ptFmt = (v, d, u) => v == null ? '—' : v.toFixed(d) + (u ? ' ' + u : '')
     const period = z <= 2 ? 1 : z <= 10 ? 2 : z <= 18 ? 3 : z <= 36 ? 4 : z <= 54 ? 5 : z <= 86 ? 6 : 7;
     const st = stateOf(z), m = MASS[z - 1];
     const ie = z <= IE1.length ? IE1[z - 1] : null, en = z <= ENP.length ? ENP[z - 1] : null, rc = z <= RCOV.length ? RCOV[z - 1] : null;
-    $('#ptCard').innerHTML = `<div class="pc-tile" style="--bk:${bk};--bkc:${bkc}"><span class="z">${z}</span><span class="sym">${SYM[z - 1]}</span><span class="nm">${EN[z - 1]} · ${CN_EL(z)}</span><span class="m">${m}${m[0] === '[' ? '' : ' u'}</span></div>`
+    $('#ptCard').innerHTML = `<div class="pc-tile" style="--bk:${bk};--bkc:${bkc}"><span class="z">${z}</span><span class="sym">${SYM[z - 1]}</span><span class="nm">${EN[z - 1]}</span><span class="m">${m}${m[0] === '[' ? '' : ' u'}</span></div>`
       + `<dl class="pc-facts">`
-      + `<div class="wide"><dt>Category</dt><dd>${CATS[c].name} · ${CATS[c].cn}${radioactive(z) ? ' · ☢ radioactive' : ''}${z >= 104 ? ' · properties predicted' : ''}</dd></div>`
+      + `<div class="wide"><dt>Category</dt><dd>${CATS[c].name}${z >= 104 ? ' · properties predicted' : ''}</dd></div>`
       + `<div><dt>Group · Period · Block</dt><dd>${r <= 7 ? g : '—'} · ${period} · ${blockOf(z)}</dd></div>`
-      + `<div><dt>Phase (25 °C)</dt><dd>${PHASES[st].name} · ${PHASES[st].cn}</dd></div>`
+      + `<div><dt>Phase (25 °C)</dt><dd>${PHASES[st].name}</dd></div>`
       + `<div class="wide"><dt>Electron configuration</dt><dd>${neutralCfgText(z)}</dd></div>`
       + `<div><dt>Electronegativity (Pauling)</dt><dd>${ptFmt(en, 2)}</dd></div>`
       + `<div><dt>1st ionization energy</dt><dd>${ptFmt(ie, 3, 'eV')}</dd></div>`
