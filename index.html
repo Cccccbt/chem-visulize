@@ -90,21 +90,44 @@ button{cursor:pointer}
 .zrow input[aria-invalid="true"]{border-color:var(--danger)}
 .pt{position:absolute;inset:0;z-index:5;background:var(--scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:10px;padding-block:14px 16px;padding-left:16px;padding-right:max(16px,env(safe-area-inset-right,0px))}
 .pt-head{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
-.pt-head h2{margin:0;font:700 18px var(--f-display);font-stretch:88%}
-.pt-info{font:500 13px var(--f-mono);color:var(--muted);min-width:0;flex:1}
-.pt-info b{color:var(--fg);font-weight:500}
-.pt-legend{display:flex;gap:10px;font-size:12px;color:var(--muted)}
-.pt-legend span{display:flex;align-items:center;gap:5px}
-.pt-legend i{width:11px;height:11px;border-radius:3px;border:1px solid var(--line)}
+.pt-head h2{margin:0;font:700 18px var(--f-display);font-stretch:88%;flex:1}
+.pt-mode{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.pt-mode button{border:0;background:var(--raise);padding:4px 10px;font-size:12px;color:var(--muted)}
+.pt-mode button+button{border-left:1px solid var(--line)}
+.pt-mode button[aria-pressed="true"]{background:var(--bk-on);color:var(--fg)}
 .pt-scroll{overflow:auto;flex:1;min-height:0}
-.pt-grid{display:grid;grid-template-columns:repeat(18,minmax(32px,1fr));grid-template-rows:repeat(7,auto) 10px auto auto;gap:3px;min-width:620px;max-width:1080px;margin:0 auto}
-.pt-cell{aspect-ratio:1/1.08;border:1px solid var(--line);border-radius:4px;background:var(--bk);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 3px;min-width:0;color:var(--fg)}
-.pt-cell .z{font:500 9.5px/1 var(--f-mono);color:var(--muted);align-self:flex-start}
-.pt-cell .s{font:700 clamp(12px,1.35vw,18px)/1.1 var(--f-display);font-stretch:85%;margin-bottom:4px}
+.pt-grid{display:grid;grid-template-columns:20px repeat(18,minmax(48px,1fr));grid-template-rows:auto repeat(7,auto) 12px auto auto;gap:3px;min-width:940px;max-width:1280px;margin:0 auto}
+.pt-cell{position:relative;aspect-ratio:1/1.12;border:1px solid var(--line);border-radius:4px;background:var(--bk);box-shadow:inset 0 2px 0 var(--bkc);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 3px;min-width:0;color:var(--fg);transition:opacity .15s}
+.pt-cell .z{position:absolute;top:3px;left:4px;font:500 9.5px/1 var(--f-mono);color:var(--muted)}
+.pt-cell .ra{position:absolute;top:2px;right:3px;font-size:9px;line-height:1;color:var(--nucleus);opacity:.8}
+.pt-cell .s{font:700 clamp(14px,1.45vw,20px)/1 var(--f-display);font-stretch:85%;margin-top:7px}
+.pt-cell .nm{font:500 9px/1.15 var(--f-display);font-stretch:68%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.pt-cell .m{font:400 8.5px/1.1 var(--f-mono);color:var(--muted);letter-spacing:-.02em}
+.pt-cell.unk{border-style:dashed}
 .pt-cell:hover{border-color:var(--accent)}
 .pt-cell[aria-current="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:var(--bk-on)}
-.pt-ph{border:1px dashed var(--line);border-radius:4px;display:grid;place-items:center;font:500 9.5px var(--f-mono);color:var(--muted);text-align:center;line-height:1.2}
-.pt-flab{grid-column:1 / span 2;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;color:var(--muted)}
+.pt-grid.hl .pt-cell:not(.on),.pt-grid.hl .pt-ph:not(.on){opacity:.18}
+.pt-ph{border:1px dashed var(--line);border-radius:4px;background:var(--bk);display:grid;place-items:center;font:500 9.5px var(--f-mono);color:var(--muted);text-align:center;line-height:1.2;transition:opacity .15s}
+.pt-flab{grid-column:1 / span 3;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;color:var(--muted)}
+.pt-gn,.pt-pn{display:flex;align-items:flex-end;justify-content:center;font:500 10px/1.1 var(--f-mono);color:var(--muted);text-align:center;padding-bottom:2px}
+.pt-gn small{display:block;font-size:8.5px;opacity:.7}
+.pt-pn{align-items:center}
+.pt-card{grid-row:2 / span 3;grid-column:4 / span 10;display:flex;gap:12px;padding:4px 6px 6px;min-width:0;overflow:hidden}
+.pc-tile{flex:none;width:118px;border:1px solid var(--line);border-radius:6px;background:var(--bk);box-shadow:inset 0 3px 0 var(--bkc);display:flex;flex-direction:column;padding:6px 8px}
+.pc-tile .z{font:500 12px var(--f-mono);color:var(--muted)}
+.pc-tile .sym{font:800 40px/1 var(--f-display);font-stretch:80%;margin-top:2px}
+.pc-tile .nm{font-size:12px;line-height:1.25;margin-top:auto}
+.pc-tile .m{font:400 11.5px var(--f-mono);color:var(--muted)}
+.pc-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px;margin:0;align-content:start;min-width:0;flex:1}
+.pc-facts div{min-width:0}
+.pc-facts dt{font-size:10.5px;color:var(--muted)}
+.pc-facts dd{margin:0;font:500 12.5px/1.25 var(--f-mono);overflow-wrap:anywhere}
+.pc-facts .wide{grid-column:1 / -1}
+.pc-hint{font-size:11px;color:var(--muted)}
+.pt-legend{display:flex;flex-wrap:wrap;gap:4px 6px;justify-content:center;max-width:1280px;margin:10px auto 0}
+.pt-legend button{display:flex;align-items:center;gap:6px;border:1px solid transparent;background:none;border-radius:5px;padding:2px 7px;font-size:12px;color:var(--muted)}
+.pt-legend button:hover,.pt-legend button:focus-visible{border-color:var(--line);color:var(--fg)}
+.pt-legend i{width:12px;height:12px;border-radius:3px;border:1px solid var(--line);background:var(--bk);box-shadow:inset 0 2px 0 var(--bkc)}
 .ptbtn{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--fg);letter-spacing:0;text-transform:none;font-weight:500}
 .ptbtn:hover{border-color:var(--accent)}
 .tile .sym sup{font:700 17px var(--f-mono);vertical-align:1.2em;margin-left:1px;color:var(--accent)}
@@ -310,11 +333,10 @@ body.side-off .app > .panel{display:none}
     <div class="pt" id="pt" role="dialog" aria-label="Periodic table" hidden>
       <div class="pt-head">
         <h2>Periodic table</h2>
-        <div class="pt-info" id="ptInfo">Click an element to load it</div>
-        <div class="pt-legend"><span><i style="background:var(--bk-s)"></i>s</span><span><i style="background:var(--bk-p)"></i>p</span><span><i style="background:var(--bk-d)"></i>d</span><span><i style="background:var(--bk-f)"></i>f</span></div>
+        <div class="pt-mode" id="ptMode" role="group" aria-label="Colour cells by"><button type="button" data-m="cat" aria-pressed="true">Category</button><button type="button" data-m="block" aria-pressed="false">Block</button><button type="button" data-m="state" aria-pressed="false">Phase</button></div>
         <button type="button" class="hbtn" id="ptClose">Close</button>
       </div>
-      <div class="pt-scroll"><div class="pt-grid" id="ptGrid"></div></div>
+      <div class="pt-scroll"><div class="pt-grid" id="ptGrid"></div><div class="pt-legend" id="ptLegend"></div></div>
     </div>
     <div class="hud hud-tl">
       <div class="chip" id="modeChip"></div>
@@ -775,6 +797,45 @@ function anchorRadius(m, c) {
   return m.rAt(0.5);
 }
 if (typeof module !== 'undefined') module.exports = {SYM, CN, configOf, displayKeys, slaterZeff, makeModel, computeGrid, gradients, polygonize, sampleCloud, anchorRadius, prepare, ANG};
+/* element data shared by the periodic table and the trends page */
+// Standard atomic weights (IUPAC, abridged). Strings in [ ] are the mass number of the longest-lived known isotope (no stable isotopes).
+const MASS = "1.008 4.0026 6.94 9.0122 10.81 12.011 14.007 15.999 18.998 20.180 22.990 24.305 26.982 28.085 30.974 32.06 35.45 39.95 39.098 40.078 44.956 47.867 50.942 51.996 54.938 55.845 58.933 58.693 63.546 65.38 69.723 72.630 74.922 78.971 79.904 83.798 85.468 87.62 88.906 91.224 92.906 95.95 [98] 101.07 102.91 106.42 107.87 112.41 114.82 118.71 121.76 127.60 126.90 131.29 132.91 137.33 138.91 140.12 140.91 144.24 [145] 150.36 151.96 157.25 158.93 162.50 164.93 167.26 168.93 173.05 174.97 178.49 180.95 183.84 186.21 190.23 192.22 195.08 196.97 200.59 204.38 207.2 208.98 [209] [210] [222] [223] [226] [227] 232.04 231.04 238.03 [237] [244] [243] [247] [247] [251] [252] [257] [258] [259] [266] [267] [268] [269] [270] [269] [278] [281] [282] [285] [286] [289] [290] [293] [294] [294]".split(' ');
+const CATS = {
+  alkali:   {name: 'Alkali metal',          cn: '碱金属',     hue: 352},
+  alkaline: {name: 'Alkaline earth metal',  cn: '碱土金属',   hue: 28},
+  trans:    {name: 'Transition metal',      cn: '过渡金属',   hue: 218},
+  post:     {name: 'Post-transition metal', cn: '后过渡金属', hue: 190},
+  metalloid:{name: 'Metalloid',             cn: '类金属',     hue: 160},
+  nonmetal: {name: 'Reactive nonmetal',     cn: '非金属',     hue: 95},
+  halogen:  {name: 'Halogen',               cn: '卤素',       hue: 55},
+  noble:    {name: 'Noble gas',             cn: '稀有气体',   hue: 275},
+  lan:      {name: 'Lanthanide',            cn: '镧系',       hue: 320},
+  act:      {name: 'Actinide',              cn: '锕系',       hue: 300}
+};
+function catOf(Z) {
+  if ([3,11,19,37,55,87].includes(Z)) return 'alkali';
+  if ([4,12,20,38,56,88].includes(Z)) return 'alkaline';
+  if (Z >= 57 && Z <= 71) return 'lan';
+  if (Z >= 89 && Z <= 103) return 'act';
+  if (NOBLE.includes(Z)) return 'noble';
+  if ([9,17,35,53,85,117].includes(Z)) return 'halogen';
+  if ([5,14,32,33,51,52].includes(Z)) return 'metalloid';
+  if ([1,6,7,8,15,16,34].includes(Z)) return 'nonmetal';
+  if ([13,31,49,50,81,82,83,84,113,114,115,116].includes(Z)) return 'post';
+  return 'trans';
+}
+// Phase at 25 °C, 1 atm. Z ≥ 100 have never been made in bulk.
+const stateOf = Z => [1,2,7,8,9,10,17,18,36,54,86].includes(Z) ? 'gas' : (Z === 35 || Z === 80) ? 'liquid' : Z >= 100 ? 'unknown' : 'solid';
+const radioactive = Z => Z === 43 || Z === 61 || Z >= 84;
+const CN_EL = Z => CN[Z - 1] || '';
+// Covalent radii, pm (Cordero et al., Dalton Trans. 2008); Z = 1–96. Mn, Fe, Co: low-spin values.
+const RCOV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215,207,204,203,201,199,198,198,196,194,192,192,189,190,187,187,175,170,162,151,144,141,136,136,132,145,146,148,140,150,150,260,221,215,206,200,196,190,187,180,169];
+// First ionization energies, eV (NIST ASD); Z = 1–103.
+const IE1 = [13.598,24.587,5.392,9.323,8.298,11.260,14.534,13.618,17.423,21.565,5.139,7.646,5.986,8.152,10.487,10.360,12.968,15.760,4.341,6.113,6.561,6.828,6.746,6.767,7.434,7.902,7.881,7.640,7.726,9.394,5.999,7.900,9.815,9.752,11.814,14.000,4.177,5.695,6.217,6.634,6.759,7.092,7.119,7.361,7.459,8.337,7.576,8.994,5.786,7.344,8.608,9.010,10.451,12.130,3.894,5.212,5.577,5.539,5.464,5.525,5.582,5.644,5.670,6.150,5.864,5.939,6.022,6.108,6.184,6.254,5.426,6.825,7.550,7.864,7.834,8.438,8.967,8.959,9.226,10.438,6.108,7.417,7.286,8.414,9.318,10.749,4.073,5.279,5.380,6.307,5.89,6.194,6.266,6.026,5.974,5.991,6.198,6.282,6.368,6.50,6.58,6.626,4.96];
+// Electron affinities, eV (experimental). Missing = no reliable value.
+const EA = {1:0.754,3:0.618,5:0.280,6:1.262,8:1.461,9:3.401,11:0.548,13:0.433,14:1.390,15:0.746,16:2.077,17:3.613,19:0.501,20:0.025,21:0.188,22:0.079,23:0.525,24:0.666,26:0.153,27:0.662,28:1.156,29:1.235,31:0.301,32:1.233,33:0.804,34:2.021,35:3.364,37:0.486,38:0.052,39:0.307,40:0.433,41:0.917,42:0.747,43:0.55,44:1.05,45:1.137,46:0.562,47:1.304,49:0.384,50:1.112,51:1.047,52:1.971,53:3.059,55:0.472,56:0.145,57:0.558,72:0.178,73:0.323,74:0.816,75:0.06,76:1.078,77:1.564,78:2.125,79:2.309,81:0.320,82:0.357,83:0.942,85:2.416};
+// Pauling electronegativity (Wikipedia data page / CRC). Pm, Eu, Yb are quoted as 1.1–1.2; midpoint used. null = no value.
+const ENP = [2.20,null,0.98,1.57,2.04,2.55,3.04,3.44,3.98,null,0.93,1.31,1.61,1.90,2.19,2.58,3.16,null,0.82,1.00,1.36,1.54,1.63,1.66,1.55,1.83,1.88,1.91,1.90,1.65,1.81,2.01,2.18,2.55,2.96,3.00,0.82,0.95,1.22,1.33,1.6,2.16,1.9,2.2,2.28,2.20,1.93,1.69,1.78,1.96,2.05,2.1,2.66,2.6,0.79,0.89,1.10,1.12,1.13,1.14,1.15,1.17,1.15,1.20,1.1,1.22,1.23,1.24,1.25,1.15,1.27,1.3,1.5,2.36,1.9,2.2,2.20,2.28,2.54,2.00,1.62,2.33,2.02,2.0,2.2,null,null,0.9,1.1,1.3,1.5,1.38,1.36,1.28,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3];
 </script>
 
 <script>
@@ -1132,18 +1193,72 @@ function neutralCfgText(Z) {
   const c = configOf(Z), core = coreOf(Z, c), cc = core ? configOf(core) : new Map();
   return (core ? `[${SYM[core - 1]}] ` : '') + displayKeys(c).filter(k => cc.get(k) !== c.get(k)).map(k => k + SUP(c.get(k))).join(' ');
 }
+const GROUP_CAS = ['IA','IIA','IIIB','IVB','VB','VIB','VIIB','VIIIB','VIIIB','VIIIB','IB','IIB','IIIA','IVA','VA','VIA','VIIA','VIIIA'];
+const PHASES = {solid: {name: 'Solid', cn: '固态', c: 'hsl(215 12% 70% / .12)', a: 'hsl(215 12% 70%)'}, liquid: {name: 'Liquid', cn: '液态', c: 'hsl(195 85% 60% / .2)', a: 'hsl(195 85% 62%)'}, gas: {name: 'Gas', cn: '气态', c: 'hsl(350 80% 66% / .18)', a: 'hsl(350 80% 68%)'}, unknown: {name: 'Unknown', cn: '未知', c: 'transparent', a: 'var(--line)'}};
+const BLOCKS = {s: {name: 's-block', h: 350}, p: {name: 'p-block', h: 36}, d: {name: 'd-block', h: 220}, f: {name: 'f-block', h: 150}};
+const ptColor = (mode, key) => mode === 'cat' ? [`hsl(${CATS[key].hue} 70% 62% / .15)`, `hsl(${CATS[key].hue} 72% 64%)`]
+  : mode === 'block' ? [`var(--bk-${key})`, `hsl(${BLOCKS[key].h} 75% 70%)`] : [PHASES[key].c, PHASES[key].a];
+const ptKey = (mode, Z) => mode === 'cat' ? catOf(Z) : mode === 'block' ? blockOf(Z) : stateOf(Z);
+const ptFmt = (v, d, u) => v == null ? '—' : v.toFixed(d) + (u ? ' ' + u : '');
 (() => {
   const grid = $('#ptGrid'); let html = '';
+  const at = (r, g) => `grid-row:${r + 1};grid-column:${g + 1}`;
+  for (let g = 1; g <= 18; g++) html += `<div class="pt-gn" style="grid-row:1;grid-column:${g + 1}"><span>${g}<small>${GROUP_CAS[g - 1]}</small></span></div>`;
+  for (let p = 1; p <= 7; p++) html += `<div class="pt-pn" style="grid-row:${p + 1};grid-column:1">${p}</div>`;
   for (let Z = 1; Z <= 118; Z++) {
-    const [r, g] = ptPos(Z);
-    html += `<button type="button" class="pt-cell" data-z="${Z}" style="grid-row:${r};grid-column:${g};--bk:var(--bk-${blockOf(Z)})" title="${Z} ${EN[Z - 1]}" aria-label="${Z} ${EN[Z - 1]}"><span class="z">${Z}</span><span class="s">${SYM[Z - 1]}</span></button>`;
+    const [r, g] = ptPos(Z), st = stateOf(Z), lab = `${Z} ${EN[Z - 1]} ${CN_EL(Z)}, ${MASS[Z - 1]}`;
+    html += `<button type="button" class="pt-cell${st === 'unknown' ? ' unk' : ''}" data-z="${Z}" style="${at(r, g)}" title="${lab}" aria-label="${lab}"><span class="z">${Z}</span>${radioactive(Z) ? '<span class="ra" aria-hidden="true">☢</span>' : ''}<span class="s">${SYM[Z - 1]}</span><span class="nm">${EN[Z - 1]}</span><span class="m">${MASS[Z - 1]}</span></button>`;
   }
-  html += `<div class="pt-ph" style="grid-row:6;grid-column:3">57–71</div><div class="pt-ph" style="grid-row:7;grid-column:3">89–103</div>`;
-  html += `<div class="pt-flab" style="grid-row:9">Lanthanides</div><div class="pt-flab" style="grid-row:10">Actinides</div>`;
+  html += `<div class="pt-ph" data-k="lan" style="${at(6, 3)}">57–71</div><div class="pt-ph" data-k="act" style="${at(7, 3)}">89–103</div>`;
+  html += `<div class="pt-flab" style="grid-row:10">Lanthanides 镧系</div><div class="pt-flab" style="grid-row:11">Actinides 锕系</div>`;
+  html += `<div class="pt-card" id="ptCard" aria-live="polite"></div>`;
   grid.innerHTML = html;
-  const info = z => { $('#ptInfo').innerHTML = `<b>${z} · ${SYM[z - 1]} · ${EN[z - 1]}</b> ${neutralCfgText(z)}`; };
+  const cells = [...grid.querySelectorAll('.pt-cell')], phs = [...grid.querySelectorAll('.pt-ph')];
+  let mode = 'cat';
+  try { mode = localStorage.getItem('ptMode') || 'cat'; } catch (e) {}
+  if (!['cat', 'block', 'state'].includes(mode)) mode = 'cat';
+  const paint = el => { const [bk, bkc] = ptColor(mode, el.dataset.key); el.style.setProperty('--bk', bk); el.style.setProperty('--bkc', bkc); };
+  function applyMode() {
+    cells.forEach(b => { b.dataset.key = ptKey(mode, +b.dataset.z); paint(b); });
+    phs.forEach(d => { d.dataset.key = mode === 'cat' ? d.dataset.k : mode === 'block' ? 'f' : 'solid'; paint(d); });
+    $('#ptMode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
+    const keys = mode === 'cat' ? Object.keys(CATS) : mode === 'block' ? Object.keys(BLOCKS) : Object.keys(PHASES);
+    const name = k => mode === 'cat' ? `${CATS[k].name} ${CATS[k].cn}` : mode === 'block' ? BLOCKS[k].name : `${PHASES[k].name} ${PHASES[k].cn}`;
+    $('#ptLegend').innerHTML = keys.map(k => { const [bk, bkc] = ptColor(mode, k); return `<button type="button" data-key="${k}"><i style="--bk:${bk};--bkc:${bkc}"></i>${name(k)}</button>`; }).join('')
+      + (mode === 'state' ? '<span class="pc-hint" style="align-self:center">Phase at 25 °C, 1 atm</span>' : '') + '<span class="pc-hint" style="align-self:center">☢ no stable isotope</span>';
+    info(shown);
+  }
+  let shown = state.Z;
+  function info(z) {
+    shown = z;
+    const c = catOf(z), [bk, bkc] = ptColor(mode, ptKey(mode, z)), [r, g] = ptPos(z);
+    const period = z <= 2 ? 1 : z <= 10 ? 2 : z <= 18 ? 3 : z <= 36 ? 4 : z <= 54 ? 5 : z <= 86 ? 6 : 7;
+    const st = stateOf(z), m = MASS[z - 1];
+    const ie = z <= IE1.length ? IE1[z - 1] : null, en = z <= ENP.length ? ENP[z - 1] : null, rc = z <= RCOV.length ? RCOV[z - 1] : null;
+    $('#ptCard').innerHTML = `<div class="pc-tile" style="--bk:${bk};--bkc:${bkc}"><span class="z">${z}</span><span class="sym">${SYM[z - 1]}</span><span class="nm">${EN[z - 1]} · ${CN_EL(z)}</span><span class="m">${m}${m[0] === '[' ? '' : ' u'}</span></div>`
+      + `<dl class="pc-facts">`
+      + `<div class="wide"><dt>Category</dt><dd>${CATS[c].name} · ${CATS[c].cn}${radioactive(z) ? ' · ☢ radioactive' : ''}${z >= 104 ? ' · properties predicted' : ''}</dd></div>`
+      + `<div><dt>Group · Period · Block</dt><dd>${r <= 7 ? g : '—'} · ${period} · ${blockOf(z)}</dd></div>`
+      + `<div><dt>Phase (25 °C)</dt><dd>${PHASES[st].name} · ${PHASES[st].cn}</dd></div>`
+      + `<div class="wide"><dt>Electron configuration</dt><dd>${neutralCfgText(z)}</dd></div>`
+      + `<div><dt>Electronegativity (Pauling)</dt><dd>${ptFmt(en, 2)}</dd></div>`
+      + `<div><dt>1st ionization energy</dt><dd>${ptFmt(ie, 3, 'eV')}</dd></div>`
+      + `<div><dt>Covalent radius</dt><dd>${ptFmt(rc, 0, 'pm')}</dd></div>`
+      + `<div><dt>Atomic mass</dt><dd>${m[0] === '[' ? m + ' (mass no.)' : m + ' u'}</dd></div>`
+      + `</dl>`;
+  }
+  window.ptInfo = info;
+  applyMode();
+  $('#ptMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m; try { localStorage.setItem('ptMode', mode); } catch (er) {} applyMode(); });
+  const hl = k => { grid.classList.toggle('hl', k != null); if (k == null) return; cells.concat(phs).forEach(el => el.classList.toggle('on', el.dataset.key === k)); };
+  const leg = $('#ptLegend');
+  leg.addEventListener('mouseover', e => { const b = e.target.closest('button'); hl(b ? b.dataset.key : null); });
+  leg.addEventListener('mouseleave', () => hl(null));
+  leg.addEventListener('focusin', e => { const b = e.target.closest('button'); hl(b ? b.dataset.key : null); });
+  leg.addEventListener('focusout', () => hl(null));
   grid.addEventListener('click', e => { const b = e.target.closest('.pt-cell'); if (!b) return; closePT(); setElement(+b.dataset.z); });
   grid.addEventListener('mouseover', e => { const b = e.target.closest('.pt-cell'); if (b) info(+b.dataset.z); });
+  grid.addEventListener('mouseleave', () => info(state.Z));
   grid.addEventListener('focusin', e => { const b = e.target.closest('.pt-cell'); if (b) info(+b.dataset.z); });
   $('#ptOpen').onclick = () => { const p = $('#pt'); if (!p.hidden) return closePT(); p.hidden = false; markPT(); info(state.Z); const cur = grid.querySelector('[aria-current="true"]'); if (cur) cur.focus({preventScroll: false}); if (window.innerWidth <= 760) viewer.scrollIntoView({behavior: 'smooth', block: 'start'}); };
   $('#ptClose').onclick = closePT;
@@ -1670,14 +1785,6 @@ const ls = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, se
 const MINUS = '−';
 
 /* ---------- data ---------- */
-// Covalent radii, pm (Cordero et al., Dalton Trans. 2008); Z = 1–96. Mn, Fe, Co: low-spin values.
-const RCOV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215,207,204,203,201,199,198,198,196,194,192,192,189,190,187,187,175,170,162,151,144,141,136,136,132,145,146,148,140,150,150,260,221,215,206,200,196,190,187,180,169];
-// First ionization energies, eV (NIST ASD); Z = 1–103.
-const IE1 = [13.598,24.587,5.392,9.323,8.298,11.260,14.534,13.618,17.423,21.565,5.139,7.646,5.986,8.152,10.487,10.360,12.968,15.760,4.341,6.113,6.561,6.828,6.746,6.767,7.434,7.902,7.881,7.640,7.726,9.394,5.999,7.900,9.815,9.752,11.814,14.000,4.177,5.695,6.217,6.634,6.759,7.092,7.119,7.361,7.459,8.337,7.576,8.994,5.786,7.344,8.608,9.010,10.451,12.130,3.894,5.212,5.577,5.539,5.464,5.525,5.582,5.644,5.670,6.150,5.864,5.939,6.022,6.108,6.184,6.254,5.426,6.825,7.550,7.864,7.834,8.438,8.967,8.959,9.226,10.438,6.108,7.417,7.286,8.414,9.318,10.749,4.073,5.279,5.380,6.307,5.89,6.194,6.266,6.026,5.974,5.991,6.198,6.282,6.368,6.50,6.58,6.626,4.96];
-// Electron affinities, eV (experimental). Missing = no reliable value.
-const EA = {1:0.754,3:0.618,5:0.280,6:1.262,8:1.461,9:3.401,11:0.548,13:0.433,14:1.390,15:0.746,16:2.077,17:3.613,19:0.501,20:0.025,21:0.188,22:0.079,23:0.525,24:0.666,26:0.153,27:0.662,28:1.156,29:1.235,31:0.301,32:1.233,33:0.804,34:2.021,35:3.364,37:0.486,38:0.052,39:0.307,40:0.433,41:0.917,42:0.747,43:0.55,44:1.05,45:1.137,46:0.562,47:1.304,49:0.384,50:1.112,51:1.047,52:1.971,53:3.059,55:0.472,56:0.145,57:0.558,72:0.178,73:0.323,74:0.816,75:0.06,76:1.078,77:1.564,78:2.125,79:2.309,81:0.320,82:0.357,83:0.942,85:2.416};
-// Pauling electronegativity (Wikipedia data page / CRC). Pm, Eu, Yb are quoted as 1.1–1.2; midpoint used. null = no value.
-const ENP = [2.20,null,0.98,1.57,2.04,2.55,3.04,3.44,3.98,null,0.93,1.31,1.61,1.90,2.19,2.58,3.16,null,0.82,1.00,1.36,1.54,1.63,1.66,1.55,1.83,1.88,1.91,1.90,1.65,1.81,2.01,2.18,2.55,2.96,3.00,0.82,0.95,1.22,1.33,1.6,2.16,1.9,2.2,2.28,2.20,1.93,1.69,1.78,1.96,2.05,2.1,2.66,2.6,0.79,0.89,1.10,1.12,1.13,1.14,1.15,1.17,1.15,1.20,1.1,1.22,1.23,1.24,1.25,1.15,1.27,1.3,1.5,2.36,1.9,2.2,2.20,2.28,2.54,2.00,1.62,2.33,2.02,2.0,2.2,null,null,0.9,1.1,1.3,1.5,1.38,1.36,1.28,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3];
 const IE_HI = Math.max(...IE1), IE_LO = Math.min(...IE1);
 const EN_HI = 3.98, EN_LO = 0.79;
 // Anion not stable (EA ≤ 0).
