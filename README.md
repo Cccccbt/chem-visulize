@@ -2,16 +2,22 @@
 
 Interactive chemistry visualizations in the browser.
 
-## Atomic Orbital Viewer
+`index.html` is a single static page with no build step; libraries and fonts load
+from CDNs. The header bar switches between tools, grouped by topic, and the home
+page (`index.html` or `#home`) lists them all.
 
-`index.html` — a 3D atomic orbital viewer (three.js) with periodic-trend charts.
-It is a single static page with no build step; libraries and fonts load from CDNs.
+| Topic | Tool | URL |
+| --- | --- | --- |
+| Atomic structure | Atomic Orbital Viewer — every occupied orbital of an element or ion in 3D | `#orbitals` |
+| Atomic structure | Quantum Number Explorer — one orbital from n, l, mₗ, mₛ | `#quantum` |
+| Atomic structure | Periodic Trends — the periodic table as a 3D bar chart | `#trends` |
+| Thermochemistry | Bomb Calorimeter — animated cutaway with q = C·ΔT → ΔU → ΔH | `#calorimeter` |
 
-## Bomb Calorimeter
+### Adding a tool
 
-`index.html#calorimeter` — an animated cutaway of a bomb calorimeter with a live
-temperature trace. Pick a sample, ignite it, and follow the worked calculation
-(q = C·ΔT → ΔU → ΔH), or run it in reverse to calibrate the calorimeter constant.
+1. Add its markup as a `<div class="app" id="…" hidden>` with a `.viewer` and a `.panel`.
+2. Add one entry to `TOPICS` in the last `<script>` (site map + router). The header
+   nav, the home page card and routing are all generated from that list.
 
 ### Run locally
 

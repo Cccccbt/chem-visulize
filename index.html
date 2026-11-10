@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
-<title>Atomic Orbital Viewer</title>
+<title>Chem Visualize</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -33,12 +33,12 @@
   color-scheme:dark;
 }
 html,body{height:100%}
-body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden;display:flex;flex-direction:column}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-.app{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-areas:"panel viewer";height:100%}
+.app{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-areas:"panel viewer";flex:1;min-height:0}
 
 /* ---------- viewer ---------- */
 .viewer{grid-area:viewer;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,var(--bg-hi) 0%,var(--bg) 72%);min-width:0}
@@ -207,12 +207,47 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
   .scale-bar,.chev svg,.sw input,.sw input::after{transition:none}
 }
 
-/* ---------- page tabs + quantum-number page ---------- */
+/* ---------- site header: the only place that switches between tools ---------- */
 :root{ --sel:#1B2540; --pos:#7FB2FF; --neg:#F2A25C; }
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
-.tabs a{text-align:center;padding:7px 6px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:12.5px;font-weight:500}
-.tabs a:hover{color:var(--fg)}
-.tabs a[aria-current="page"]{background:var(--raise);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.site{flex:none;display:flex;align-items:stretch;gap:20px;height:46px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:30}
+.site-brand{flex:none;display:flex;align-items:center;gap:8px;color:var(--fg);text-decoration:none;font:700 15px/1 var(--f-display);font-stretch:88%;letter-spacing:.03em}
+.site-brand svg{width:20px;height:20px;color:var(--accent);flex:none}
+.site-nav{display:flex;align-items:stretch;min-width:0;overflow-x:auto;scrollbar-width:none}
+.site-nav::-webkit-scrollbar{display:none}
+.nav-group{display:flex;align-items:stretch;gap:2px;padding:0 16px;border-left:1px solid var(--line);flex:none}
+.nav-cap{align-self:center;margin-right:8px;font:500 10.5px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);opacity:.8;white-space:nowrap}
+.site-nav a{display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;border-top:2px solid transparent}
+.site-nav a:hover{color:var(--fg)}
+.site-nav a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.site-nav a:focus-visible,.site-brand:focus-visible{outline-offset:-3px}
+
+/* ---------- home ---------- */
+.home{flex:1;min-height:0;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,var(--bg-hi) 0%,var(--bg) 70%)}
+.home-in{max-width:980px;margin:0 auto;padding:48px 24px 64px}
+.home-head h1{margin:0;font:800 34px/1.1 var(--f-display);font-stretch:88%;letter-spacing:.01em}
+.home-head p{margin:10px 0 0;color:var(--muted);font-size:15px;max-width:60ch}
+.topic{margin-top:40px}
+.topic-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);font:500 11.5px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.topic-h span{letter-spacing:0;text-transform:none;font-family:var(--f-body);font-size:12.5px;opacity:.85}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.card{display:flex;flex-direction:column;gap:8px;padding:18px 18px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);text-decoration:none;transition:border-color .12s,background .12s}
+.card:hover{border-color:var(--accent);background:var(--raise)}
+.card h3{margin:0;font:700 17px/1.2 var(--f-display);font-stretch:88%;letter-spacing:.02em}
+.card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55;flex:1}
+.card ul{margin:4px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.card li{font:500 11px/1 var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
+.card .open{margin-top:6px;font-size:12.5px;font-weight:500;color:var(--accent)}
+@media (max-width:760px){
+  .site{position:sticky;top:0;gap:12px}
+  .site-brand span{display:none}
+  .nav-cap{display:none}
+  .nav-group{padding:0 8px}
+  .nav-group:first-child{border-left:0;padding-left:0}
+  .home{overflow:visible}
+  .home-in{padding:28px 16px 48px}
+  .home-head h1{font-size:27px}
+}
+@media (prefers-reduced-motion:reduce){ .card{transition:none} }
 
 .qtitle{background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:3px}
 .qname{font:700 30px/1.05 var(--f-display);font-stretch:85%;letter-spacing:.01em}
@@ -270,7 +305,6 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 .legend i.wheel{border-radius:50%;background:conic-gradient(from 90deg,#f66,#fd6,#6f6,#6ff,#66f,#f6f,#f66)}
 
 /* ---------- periodic-trends page ---------- */
-.tabs{grid-template-columns:repeat(3,1fr)}
 .seg.four{grid-template-columns:repeat(4,1fr)}
 #tProp button{padding:7px 4px;font-size:12.5px;line-height:1.2}
 .seg.four button{padding:7px 3px;font-size:12px;line-height:1.2}
@@ -309,9 +343,9 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 .tex button small{display:block;color:var(--muted);font-size:11px}
 
 /* ---------- collapsible side panel ---------- */
-.ptop{display:flex;gap:8px;align-items:stretch}
-.ptop .tabs{flex:1;min-width:0}
-.sideclose{flex:none;display:grid;place-items:center;width:38px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--muted);padding:0}
+.ptop{display:flex;gap:10px;align-items:flex-start}
+.ptop .brand{flex:1;min-width:0}
+.sideclose{flex:none;display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--muted);padding:0}
 .sideclose:hover{color:var(--fg);border-color:var(--accent)}
 .sideclose svg,.sidebtn svg{width:15px;height:15px;flex:none}
 .sidebtn{display:none;align-items:center;gap:6px}
@@ -325,7 +359,6 @@ body.side-off .app > .panel{display:none}
 }
 
 /* ---------- bomb-calorimeter page ---------- */
-.tabs{grid-template-columns:repeat(2,1fr)}
 #cCanvas{touch-action:pan-y}
 .hbtn.go{border-color:var(--nucleus);color:var(--nucleus);font-weight:600}
 .hbtn.go:hover{background:rgba(242,196,109,.12)}
@@ -349,7 +382,22 @@ body.side-off .app > .panel{display:none}
 }
 </style>
 
-<div class="app" id="elApp">
+<header class="site">
+  <a class="site-brand" href="#home"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><ellipse cx="10" cy="10" rx="8.5" ry="3.4"/><ellipse cx="10" cy="10" rx="8.5" ry="3.4" transform="rotate(60 10 10)"/><ellipse cx="10" cy="10" rx="8.5" ry="3.4" transform="rotate(120 10 10)"/><circle cx="10" cy="10" r="1.5" fill="currentColor" stroke="none"/></svg><span>Chem Visualize</span></a>
+  <nav class="site-nav" id="siteNav" aria-label="Tools"></nav>
+</header>
+
+<main class="home" id="homeApp" hidden>
+  <div class="home-in">
+    <header class="home-head">
+      <h1>Chem Visualize</h1>
+      <p>Interactive chemistry models that run in the browser. Pick a tool to start.</p>
+    </header>
+    <div id="homeTopics"></div>
+  </div>
+</main>
+
+<div class="app" id="elApp" hidden>
   <main class="viewer" id="viewer">
     <canvas class="bohr" id="bohr" hidden></canvas>
     <div class="labels" id="labels"></div>
@@ -378,7 +426,6 @@ body.side-off .app > .panel{display:none}
   </main>
 
   <aside class="panel">
-    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a><a href="#calorimeter" data-view="calorimeter">Calorimeter</a></nav>
     <header class="brand">
       <h1>Atomic Orbital Viewer</h1>
       <p>Hydrogen-like wavefunctions · Slater effective charge · ground-state configuration</p>
@@ -478,7 +525,6 @@ body.side-off .app > .panel{display:none}
   </main>
 
   <aside class="panel">
-    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a><a href="#calorimeter" data-view="calorimeter">Calorimeter</a></nav>
     <header class="brand">
       <h1>Quantum Number Explorer</h1>
       <p>Pick n, l, mₗ and mₛ to draw one hydrogen-like orbital</p>
@@ -578,7 +624,6 @@ body.side-off .app > .panel{display:none}
   </main>
 
   <aside class="panel">
-    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a><a href="#calorimeter" data-view="calorimeter">Calorimeter</a></nav>
     <header class="brand">
       <h1>Periodic Trends</h1>
       <p>Each element is a bar; its height is the property value. Drag to rotate, click a bar to inspect.</p>
@@ -670,7 +715,6 @@ body.side-off .app > .panel{display:none}
   </main>
 
   <aside class="panel">
-    <nav class="tabs" aria-label="Pages"><a href="#orbitals" data-view="orbitals">Elements</a><a href="#quantum" data-view="quantum">Quantum numbers</a><a href="#trends" data-view="trends">Trends</a><a href="#calorimeter" data-view="calorimeter">Calorimeter</a></nav>
     <header class="brand">
       <h1>Bomb Calorimeter</h1>
       <p>Burn a sample at constant volume and read the heat from the temperature rise of the water.</p>
@@ -1135,7 +1179,7 @@ function place(el, v, w, h, dx = 0) {
 const NICE = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
 function loop() {
   requestAnimationFrame(loop);
-  if (document.documentElement.dataset.view === 'quantum') return;
+  if (document.documentElement.dataset.view !== 'orbitals') return;
   if (state.mode === 'bohr') { drawBohr(performance.now()); return; }
   const d = camera.position.distanceTo(controls.target);
   if (fitTarget) { const nd = d + (fitTarget - d) * 0.14; setDist(nd); if (Math.abs(nd - fitTarget) < fitTarget * 0.002) fitTarget = null; }
@@ -1854,18 +1898,7 @@ function initQ() {
   setQ({}); rebuild(true);
 }
 
-/* ---------- router ---------- */
-function route() {
-  const v = location.hash === '#quantum' ? 'quantum' : location.hash === '#trends' ? 'trends' : location.hash === '#calorimeter' ? 'calorimeter' : 'orbitals';
-  document.documentElement.dataset.view = v;
-  $('#elApp').hidden = v !== 'orbitals'; $('#qApp').hidden = v !== 'quantum'; $('#tApp').hidden = v !== 'trends'; $('#cApp').hidden = v !== 'calorimeter';
-  document.querySelectorAll('.tabs a').forEach(a => { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  if (v === 'quantum') initQ();
-  if (v === 'trends' && window.initTrends) window.initTrends();
-  if (v === 'calorimeter' && window.initCalorimeter) window.initCalorimeter();
-}
-window.addEventListener('hashchange', route);
-route();
+window.initQuantum = initQ;
 })();
 </script>
 
@@ -2296,7 +2329,6 @@ window.initTrends = function () {
   setView(S.view in VIEWS ? S.view : '3d', false);
   render();
 };
-if (location.hash === '#trends') window.initTrends();
 })();
 </script>
 <script>
@@ -2681,21 +2713,20 @@ window.initCalorimeter = function () {
   resize();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
 };
-if (location.hash === '#calorimeter') window.initCalorimeter();
 })();
 </script>
 <script>
-/* ---------- collapsible side panel (shared by all pages) ---------- */
+/* ---------- collapsible side panel (shared by all tools) ---------- */
 (function () {
   const KEY = 'aov.sideOff';
   const ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><path d="M6 2.75v10.5"/></svg>';
   let off = false;
   try { off = localStorage.getItem(KEY) === '1'; } catch (e) {}
-  // "Hide" button lives inside each panel, next to the page tabs
+  // "Hide" button lives inside each panel, next to the tool title
   document.querySelectorAll('.app > .panel').forEach(p => {
-    const nav = p.querySelector(':scope > .tabs');
+    const head = p.querySelector(':scope > .brand');
     const row = document.createElement('div'); row.className = 'ptop';
-    if (nav) { p.insertBefore(row, nav); row.appendChild(nav); } else p.prepend(row);
+    if (head) { p.insertBefore(row, head); row.appendChild(head); } else p.prepend(row);
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'sideclose'; b.innerHTML = ICON;
     b.title = 'Hide side panel ( [ )'; b.setAttribute('aria-label', 'Hide side panel');
@@ -2731,6 +2762,57 @@ if (location.hash === '#calorimeter') window.initCalorimeter();
     e.preventDefault(); set(!off);
   });
   set(off);
+})();
+</script>
+<script>
+/* ---------- site map + router ----------
+   One registry drives the header nav, the home page and routing.
+   To add a tool: add its <div class="app" id="…"> markup, then one entry here. */
+(function () {
+  const TOPICS = [
+    {name: 'Atomic structure', blurb: 'Where electrons are, and how that shapes the periodic table', pages: [
+      {id: 'orbitals', app: '#elApp', nav: 'Atomic orbitals', title: 'Atomic Orbital Viewer',
+       desc: 'Choose any element or ion and see every occupied orbital in 3D, sized with Slater effective charges.',
+       tags: ['Lobes', 'Electron cloud', 'Bohr model']},
+      {id: 'quantum', app: '#qApp', nav: 'Quantum numbers', title: 'Quantum Number Explorer', init: () => window.initQuantum(),
+       desc: 'Set n, l, mₗ and mₛ and draw that single hydrogen-like orbital, with its radial distribution.',
+       tags: ['Real / complex', 'Nodes', 'r²R²(r)']},
+      {id: 'trends', app: '#tApp', nav: 'Periodic trends', title: 'Periodic Trends', init: () => window.initTrends(),
+       desc: 'The periodic table as a 3D bar chart: compare a property across periods and down groups.',
+       tags: ['Radius', 'Ionization energy', 'Electronegativity']}
+    ]},
+    {name: 'Thermochemistry', blurb: 'Measuring the heat of a reaction', pages: [
+      {id: 'calorimeter', app: '#cApp', nav: 'Bomb calorimeter', title: 'Bomb Calorimeter', init: () => window.initCalorimeter(),
+       desc: 'Burn a sample at constant volume, watch the water temperature rise and follow the calculation.',
+       tags: ['q = C·ΔT', 'ΔU → ΔH', 'Calibration']}
+    ]}
+  ];
+  const SITE = 'Chem Visualize';
+  const HOME = {id: 'home', app: '#homeApp', title: SITE};
+  const PAGES = [HOME, ...TOPICS.flatMap(t => t.pages)];
+  const $ = s => document.querySelector(s);
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+  $('#siteNav').innerHTML = TOPICS.map(t =>
+    `<div class="nav-group" role="group" aria-label="${esc(t.name)}"><span class="nav-cap" aria-hidden="true">${esc(t.name)}</span>` +
+    t.pages.map(p => `<a href="#${p.id}" data-view="${p.id}">${esc(p.nav)}</a>`).join('') + '</div>').join('');
+
+  $('#homeTopics').innerHTML = TOPICS.map(t =>
+    `<section class="topic"><h2 class="topic-h">${esc(t.name)}<span>${esc(t.blurb)}</span></h2><div class="cards">` +
+    t.pages.map(p => `<a class="card" href="#${p.id}"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><ul>${p.tags.map(x => `<li>${esc(x)}</li>`).join('')}</ul><span class="open" aria-hidden="true">Open →</span></a>`).join('') +
+    '</div></section>').join('');
+
+  function route() {
+    const page = PAGES.find(p => '#' + p.id === location.hash) || HOME;
+    document.documentElement.dataset.view = page.id;
+    for (const p of PAGES) $(p.app).hidden = p !== page;
+    document.querySelectorAll('.site-nav a').forEach(a => { if (a.dataset.view === page.id) { a.setAttribute('aria-current', 'page'); a.scrollIntoView({block: 'nearest', inline: 'nearest'}); } else a.removeAttribute('aria-current'); });
+    document.title = page === HOME ? SITE : `${page.title} · ${SITE}`;
+    if (page.init) page.init();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+  route();
 })();
 </script>
 </body></html>
