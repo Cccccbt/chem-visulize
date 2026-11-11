@@ -439,6 +439,34 @@ body.side-off .app > .panel{display:none}
 .vcen button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel);color:var(--accent)}
 #vToLewis,#lTo3d{white-space:nowrap}
 @media (max-width:760px){ #vViewer{height:62svh;min-height:360px} #vApp .qtitle{max-width:calc(100vw - 150px)} }
+
+/* ---------- polarity page ---------- */
+.pdl{position:absolute;left:0;top:0;font:700 13px/1 var(--f-body);padding:1px 5px 2px;border-radius:5px;background:var(--glass);pointer-events:none;white-space:nowrap;will-change:transform}
+.pdl.neg{color:#FF8A80;border:1px solid rgba(255,138,128,.45)}
+.pdl.pos{color:#8FB4FF;border:1px solid rgba(143,180,255,.45)}
+.pmu{position:absolute;left:0;top:0;font:italic 700 16px/1 var(--f-body);color:var(--nucleus);pointer-events:none;will-change:transform;text-shadow:0 0 4px rgba(10,13,18,.9)}
+.legend i.pb{background:#8FB4FF;height:3px;border-radius:2px}
+.legend i.pn{background:var(--nucleus);height:4px;border-radius:2px}
+.legend i.pm{background:#FF5A5A;border-radius:50%}
+.legend i.pp{background:#5A8CFF;border-radius:50%}
+.pverdict{border:1px solid var(--line);border-radius:8px;background:var(--raise);padding:10px 12px 11px}
+.pverdict .pv{font:800 22px/1.1 var(--f-display);font-stretch:88%;letter-spacing:.01em}
+.pverdict.polar .pv{color:var(--nucleus)}
+.pverdict.nonpolar .pv{color:#8FD6A8}
+.pverdict.ion .pv{color:var(--accent)}
+.pverdict p{margin:6px 0 0;font-size:12.5px;line-height:1.55}
+.pverdict p b{font-weight:600}
+.pverdict .pnote{color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+.pbonds{display:flex;flex-direction:column;gap:8px}
+.pbond{display:grid;grid-template-columns:62px minmax(0,1fr) 38px;gap:4px 10px;align-items:center}
+.pbk{font:600 13px var(--f-display)}
+.pbk small{font:400 11px var(--f-mono);color:var(--muted)}
+.pbar{height:7px;border-radius:4px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,#5A8CFF,#FF5A5A)}
+.pbv{font:500 12.5px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.pbond > small{grid-column:2 / -1;font-size:11.5px;color:var(--muted);margin-top:-2px}
+#pToV,#vToP{white-space:nowrap}
+@media (max-width:760px){ #pViewer{height:62svh;min-height:360px} #pApp .qtitle{max-width:calc(100vw - 150px)} }
 </style>
 
 <header class="site">
@@ -934,7 +962,7 @@ body.side-off .app > .panel{display:none}
     </section>
 
     <section aria-label="Geometry">
-      <h2 class="sec-h">Geometry</h2>
+      <h2 class="sec-h"><span>Geometry</span><button type="button" class="ptbtn" id="vToP">Polarity →</button></h2>
       <dl class="readout vread" id="vRead"></dl>
     </section>
 
@@ -955,6 +983,64 @@ body.side-off .app > .panel{display:none}
 
     <p class="note"><b>How it works.</b> The Lewis structure gives the central atom's <b>electron domains</b>: each bonded atom counts once, whether the bond is single, double or triple, and so does each lone pair. The domains repel and settle as far apart as possible: a line, triangle, tetrahedron, trigonal bipyramid, octahedron or pentagonal bipyramid. That is the <b>electron geometry</b>. The <b>molecular shape</b> names only where the atoms are. In a trigonal bipyramid, lone pairs take the roomier equatorial sites, which is why SF<sub>4</sub> is a seesaw and ClF<sub>3</sub> is T-shaped.</p>
     <p class="note"><b>Lone-pair squeeze</b> sets each class to typical measured angles (NH<sub>3</sub> 107°, H<sub>2</sub>O 104.5°, SF<sub>4</sub> 102°/173°, ClF<sub>3</sub> 87.5°, BrF<sub>5</sub> 85°). Individual molecules differ by a few degrees: PF<sub>3</sub> is 98°, for example. For molecules with several centres, pick one central atom at a time; atoms marked … continue into the rest of the molecule.</p>
+  </aside>
+</div>
+
+<div class="app" id="pApp" hidden>
+  <main class="viewer" id="pViewer">
+    <div class="labels" id="pLabels"></div>
+    <div class="hud hud-tl">
+      <div class="qtitle"><div class="qname" id="pTitle"></div><div class="qtuple" id="pSub"></div></div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="hbtn" id="pReset" type="button">Reset view</button>
+    </div>
+    <div class="hud hud-br">
+      <div class="legend"><span><i class="pb"></i>bond dipole</span><span><i class="pn"></i>net dipole μ</span><span><i class="pm"></i>δ−</span><span><i class="pp"></i>δ+</span></div>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <header class="brand">
+      <h1>Molecular Polarity</h1>
+      <p>Bond dipoles add as vectors; the shape decides whether they cancel</p>
+    </header>
+
+    <section aria-label="Molecule">
+      <h2 class="sec-h"><span>Molecule</span><button type="button" class="ptbtn" id="pToV">VSEPR shape →</button></h2>
+      <form class="qquick" id="pForm" autocomplete="off">
+        <input id="pIn" type="text" spellcheck="false" aria-label="Formula" placeholder="e.g. CH2Cl2, NF3, SO2">
+        <button type="submit">Build</button>
+      </form>
+      <div class="qhint" id="pHint" role="alert"></div>
+      <div class="lpre" id="pPresets"></div>
+    </section>
+
+    <section aria-label="Verdict">
+      <h2 class="sec-h">Verdict</h2>
+      <div class="pverdict" id="pVerdict"></div>
+      <dl class="readout vread" id="pRead" style="margin-top:14px"></dl>
+    </section>
+
+    <section aria-label="Bond polarity">
+      <h2 class="sec-h">Bond polarity (ΔEN)</h2>
+      <div class="pbonds" id="pBonds"></div>
+    </section>
+
+    <section aria-label="Display" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0">Display</h2>
+      <div class="toggles">
+        <label class="sw"><input type="checkbox" id="pBd">Bond dipoles</label>
+        <label class="sw" title="Lone pairs on inner atoms add to the dipole (they are the δ− end of the atom)"><input type="checkbox" id="pLp">Lone pairs</label>
+        <label class="sw"><input type="checkbox" id="pNet">Net dipole</label>
+        <label class="sw"><input type="checkbox" id="pDl">δ+ / δ− labels</label>
+        <label class="sw" title="Colour atoms red (δ−) to blue (δ+), like an electrostatic potential map"><input type="checkbox" id="pMap">Charge map</label>
+        <label class="sw"><input type="checkbox" id="pSpin">Auto-rotate</label>
+      </div>
+    </section>
+
+    <p class="note"><b>How it works.</b> Each bond gets a dipole arrow that points to the more electronegative atom (δ−), with length equal to the Pauling electronegativity difference ΔEN. The crossed tail marks the δ+ end. Lone pairs on inner atoms add a dipole in their own direction. The 3D shape comes from VSEPR, and the arrows are added as vectors. If they cancel, as in CO<sub>2</sub>, BF<sub>3</sub>, CCl<sub>4</sub> and XeF<sub>4</sub>, the molecule is nonpolar even though its bonds are polar.</p>
+    <p class="note"><b>Bond types:</b> ΔEN below 0.4 is nonpolar covalent, 0.4 to 1.8 is polar covalent, and above that the bond is mostly ionic. The model's net dipole is in ΔEN units and only shows direction and rough size. Measured values in debye (D) are shown for comparison; CO and O<sub>3</sub> show where the simple model breaks down.</p>
   </aside>
 </div>
 
@@ -4039,7 +4125,7 @@ function render(reset) {
       return `<button type="button" data-c="${i}" aria-pressed="${i === S.c}">${esc(m.atoms[i])}${count[m.atoms[i]] > 1 ? `<sub>${idx[m.atoms[i]]}</sub>` : ''}<small>${esc(nb)}</small></button>`;
     }).join('');
     cn.hidden = false;
-  } else cn.hidden = true;
+  } else { cn.hidden = true; cn.innerHTML = ''; }
   // angles in the model
   const B = doms.map((d, i) => i).filter(i => doms[i].kind === 'bond');
   const ag = new Map();
@@ -4088,6 +4174,7 @@ function bind() {
     $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k !== 'spin') render(false); });
   $('#vMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.real = b.dataset.m === 'real'; save(); render(false); });
   $('#vReset').addEventListener('click', () => fit(true));
+  $('#vToP').addEventListener('click', () => window.openPolarity && window.openPolarity(S.f));
   $('#vToLewis').addEventListener('click', () => window.openLewis && window.openLewis(S.f));
 }
 
@@ -4099,6 +4186,435 @@ window.initVSEPR = function () {
     pending = null;
     render(true);
     return;
+  }
+  if (pending) { const f = pending; pending = null; submit(f); }
+};
+})();
+</script>
+<script id="mol3d">
+/* ===== whole-molecule 3-D coordinates from the Lewis structure (no DOM) ===== */
+window.Mol3D = (function () {
+  const C = window.LewisCore, G = window.VSEPRGeo;
+  const add = (a, b, s = 1) => [a[0] + b[0] * s, a[1] + b[1] * s, a[2] + b[2] * s];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const { norm, dot, sub, len } = G;
+  const rotAxis = (v, k, t) => { const c = Math.cos(t), s = Math.sin(t), kd = dot(k, v), kx = cross(k, v); return [0, 1, 2].map(i => v[i] * c + kx[i] * s + k[i] * kd * (1 - c)); };
+  function align(a, b) { // rotation taking unit a onto unit b, as a function
+    const c = dot(a, b), ax = cross(a, b), s = len(ax);
+    if (s < 1e-9) {
+      if (c > 0) return v => v.slice();
+      let p = cross(a, [1, 0, 0]); if (len(p) < 1e-6) p = cross(a, [0, 1, 0]);
+      p = norm(p); return v => rotAxis(v, p, Math.PI);
+    }
+    const k = norm(ax), t = Math.atan2(s, c);
+    return v => rotAxis(v, k, t);
+  }
+  function dihedral(a, b, c, d) {
+    const b1 = sub(b, a), b2 = sub(c, b), b3 = sub(d, c), n1 = cross(b1, b2), n2 = cross(b2, b3);
+    return Math.atan2(dot(cross(n1, n2), norm(b2)), dot(n1, n2)) * 180 / Math.PI;
+  }
+  const bondLen = (ea, eb, o) => (ea === 'H' || eb === 'H' ? 1.12 : 1.5) - 0.1 * (o - 1);
+
+  function domainsOf(mol, sol, form, i) {
+    const doms = [];
+    sol.ctx.adj[i].forEach(([j, k]) => doms.push({kind: 'bond', j, k, en: C.en(mol.atoms[j]), order: form.ord[k]}));
+    const l = form.lone[i];
+    for (let q = 0; q < Math.floor(l / 2); q++) doms.push({kind: 'lp', n: 2});
+    if (l % 2) doms.push({kind: 'lp', n: 1});
+    return doms;
+  }
+
+  function build(mol, sol, form) {
+    const n = mol.atoms.length, {adj, deg} = sol.ctx;
+    const pos = new Array(n), lps = mol.atoms.map(() => []);
+    if (n === 1) {
+      pos[0] = [0, 0, 0];
+      const doms = domainsOf(mol, sol, form, 0), dirs = G.place(doms);
+      doms.forEach((d, q) => lps[0].push({dir: dirs[q], n: d.n}));
+      return {pos, lps};
+    }
+    if (mol.xy) { // planar ring molecules: use the 2-D layout
+      const P = mol.xy;
+      for (let i = 0; i < n; i++) pos[i] = [P[i][0] * 1.4, -P[i][1] * 1.4, 0];
+      return {pos, lps};
+    }
+    let root = 0;
+    for (let i = 1; i < n; i++) if (deg[i] > deg[root] || (deg[i] === deg[root] && mol.atoms[root] === 'H' && mol.atoms[i] !== 'H')) root = i;
+    pos[root] = [0, 0, 0];
+    const placed = new Set([root]), queue = [];
+    {
+      const doms = domainsOf(mol, sol, form, root), dirs = G.squeeze(G.place(doms), doms);
+      doms.forEach((d, q) => {
+        if (d.kind === 'bond') { pos[d.j] = add(pos[root], dirs[q], bondLen(mol.atoms[root], mol.atoms[d.j], d.order)); placed.add(d.j); queue.push([d.j, root]); }
+        else lps[root].push({dir: dirs[q], n: d.n});
+      });
+    }
+    while (queue.length) {
+      const [c, par] = queue.shift();
+      const doms = domainsOf(mol, sol, form, c);
+      if (doms.length < 2 && !doms.some(d => d.kind === 'lp')) continue;
+      const local = G.squeeze(G.place(doms), doms);
+      const pi = doms.findIndex(d => d.kind === 'bond' && d.j === par);
+      const toPar = norm(sub(pos[par], pos[c]));
+      const R = align(norm(local[pi]), toPar);
+      const base = local.map(v => R(v));
+      // spin about the bond to the parent: keep new atoms as far as possible from everything already placed
+      // existing points that repel: placed atoms and the lone pairs already drawn
+      const others = [];   // [point, isLonePair]
+      for (const k of placed) if (k !== c) others.push([pos[k], false]);
+      lps.forEach((list, k) => list.forEach(l => others.push([add(pos[k], l.dir, 0.7), true])));
+      let gauche = null;
+      if (form.lone[c] >= 2 && form.lone[par] >= 2 && mol.atoms[c] === mol.atoms[par]) {
+        const o = adj[par].map(([j]) => j).find(j => j !== c && placed.has(j));
+        if (o != null && doms.some((d, q) => q !== pi && d.kind === 'bond')) gauche = pos[o];
+      }
+      let best = null;
+      for (let s = 0; s < 72; s++) {
+        const t = s * Math.PI / 36, dirs = base.map(v => rotAxis(v, toPar, t));
+        let E = 0;
+        doms.forEach((d, q) => {
+          if (q === pi) return;
+          const p = add(pos[c], dirs[q], d.kind === 'bond' ? 1.3 : 0.7);
+          const lp = d.kind === 'lp';
+          for (const [o, olp] of others) E += (lp && olp ? 2.5 : 1) / Math.pow(Math.max(len(sub(p, o)), 0.3), 3);
+        });
+        if (gauche) { // X–X bonds with lone pairs at both ends (H2O2, N2H4) twist to about 115°
+          const qd = doms.findIndex((d, q) => q !== pi && d.kind === 'bond');
+          if (qd >= 0) E = Math.abs(Math.abs(dihedral(gauche, pos[par], pos[c], add(pos[c], dirs[qd]))) - 115);
+        }
+        if (!best || E < best.E - 1e-9) best = {E, dirs};
+      }
+      doms.forEach((d, q) => {
+        if (q === pi) return;
+        if (d.kind === 'lp') { lps[c].push({dir: best.dirs[q], n: d.n}); return; }
+        if (placed.has(d.j)) return; // ring closure (not expected for formula skeletons)
+        pos[d.j] = add(pos[c], best.dirs[q], bondLen(mol.atoms[c], mol.atoms[d.j], d.order));
+        placed.add(d.j); queue.push([d.j, c]);
+      });
+    }
+    // centre on the centroid
+    const cen = [0, 0, 0];
+    pos.forEach(p => { for (let a = 0; a < 3; a++) cen[a] += p[a] / n; });
+    for (let i = 0; i < n; i++) pos[i] = sub(pos[i], cen);
+    return {pos, lps};
+  }
+
+  /* bond dipoles point to the more electronegative atom (the δ− end), length ΔEN; lone pairs add along their direction */
+  const LPW = 0.7;
+  function dipoles(mol, sol, form, geo, withLP) {
+    const bonds = mol.edges.map(([a, b], k) => {
+      const d = C.en(mol.atoms[b]) - C.en(mol.atoms[a]);
+      const u = norm(sub(geo.pos[b], geo.pos[a]));
+      const v = d >= 0 ? u : u.map(x => -x);
+      return {k, a, b, den: Math.abs(d), neg: d >= 0 ? b : a, vec: v.map(x => x * Math.abs(d))};
+    });
+    let net = [0, 0, 0];
+    for (const b of bonds) net = add(net, b.vec);
+    const lpv = [];
+    if (withLP) geo.lps.forEach((list, i) => sol.ctx.deg[i] >= 2 && list.forEach(l => { const v = l.dir.map(x => x * (C.per(mol.atoms[i]) <= 2 ? LPW : LPW * 0.45) * l.n / 2); lpv.push({i, v}); net = add(net, v); }));
+    const q = mol.atoms.map(() => 0);
+    for (const b of bonds) { q[b.neg] -= b.den / 2; q[b.neg === b.a ? b.b : b.a] += b.den / 2; }
+    return {bonds, lpv, net, mag: len(net), q};
+  }
+  return {build, dipoles};
+})();
+</script>
+<script>
+/* ===== molecular-polarity page ===== */
+(function () {
+const C = window.LewisCore, M = window.Mol3D;
+const $ = s => document.querySelector(s);
+const KEY = 'aov.polarity';
+const S = {f: 'H2O', bd: true, lp: true, net: true, dl: true, map: false, spin: false};
+const PRESETS = [
+  ['Polar', [['H2O', 'water'], ['NH3', 'ammonia'], ['HF', 'hydrogen fluoride'], ['SO2', 'sulfur dioxide'], ['CH2O', 'formaldehyde'], ['HCN', 'hydrogen cyanide']]],
+  ['Polar bonds, nonpolar molecule', [['CO2', 'linear'], ['BF3', 'trigonal planar'], ['CCl4', 'tetrahedral'], ['PCl5', 'trig. bipyramidal'], ['SF6', 'octahedral'], ['XeF4', 'square planar'], ['XeF2', 'linear']]],
+  ['Chloromethanes', [['CH4', '0 D'], ['CH3Cl', '1.90 D'], ['CH2Cl2', '1.60 D'], ['CHCl3', '1.04 D'], ['CCl4', '0 D']]],
+  ['Compare', [['NF3', 'vs NH₃'], ['H2S', 'vs H₂O'], ['OCS', 'vs CO₂'], ['SF4', 'seesaw'], ['ClF3', 'T-shaped'], ['BrF5', 'sq. pyramidal']]],
+  ['Surprises', [['CO', 'tiny dipole'], ['O3', 'all oxygen'], ['H2O2', 'twisted'], ['C6H6', 'benzene']]],
+  ['Organic', [['CH3OH', 'methanol'], ['C2H5OH', 'ethanol'], ['CH3COCH3', 'acetone'], ['CH3COOH', 'acetic acid'], ['CH3CN', 'acetonitrile'], ['C2H6', 'ethane']]]
+];
+// measured gas-phase dipole moments, debye (CRC Handbook of Chemistry and Physics)
+const MEAS = {H2O: 1.85, NH3: 1.47, NF3: 0.23, HF: 1.83, HCl: 1.11, HBr: 0.83, HI: 0.45, H2S: 0.97, CO: 0.11, CO2: 0, OCS: 0.71, SO2: 1.63, O3: 0.53,
+  BF3: 0, CH4: 0, CH3Cl: 1.90, CH2Cl2: 1.60, CHCl3: 1.04, CCl4: 0, CH2O: 2.33, HCN: 2.98, CH3OH: 1.70, C2H5OH: 1.69, CH3COOH: 1.74, CH3COCH3: 2.88,
+  CH3CN: 3.92, H2O2: 1.57, N2H4: 1.75, SF4: 0.63, ClF3: 0.6, BrF5: 1.51, XeF2: 0, XeF4: 0, SF6: 0, PCl5: 0, BeCl2: 0, C6H6: 0, C2H6: 0, C2H4: 0, C2H2: 0,
+  N2: 0, O2: 0, H2: 0, Cl2: 0, F2: 0, PF3: 1.03, PCl3: 0.56, NO2: 0.32, N2O: 0.16, NO: 0.16, CS2: 0, SO3: 0, CH3NH2: 1.31, HOCl: 1.3};
+const NOTES = {
+  CO: 'The model says the O end is negative, but the measured dipole is tiny (0.11 D) and points the other way. Carbon\'s lone pair and the formal charges in :C≡O: (C⁻, O⁺) almost cancel the electronegativity difference.',
+  O3: 'Every bond joins O to O, so there are no electronegativity bond dipoles, and the model\'s dipole comes only from the central lone pair. The real reason O₃ is polar (0.53 D) is mostly charge separation: the central O carries a + formal charge, the two ends share the −, and the shape is bent.',
+  NF3: 'The N–F dipoles point away from N, and the lone pair points the other way, so they largely cancel. In NH₃ the N–H dipoles point toward N and add to the lone pair. Compare 0.23 D with 1.47 D.',
+  H2O2: 'H₂O₂ is twisted about the O–O bond (about 110°) rather than flat, so the two O–H halves do not cancel.',
+  N2H4: 'Hydrazine is twisted (gauche) about the N–N bond, so the two NH₂ halves do not cancel.',
+  CH3COOH: 'Acetic acid can rotate about its C–C and C–O bonds, so its dipole depends on the conformation shown.',
+  C2H5OH: 'Ethanol rotates about its C–C and C–O bonds; the dipole changes a little with conformation.'
+};
+const COL = {H: '#C9CFDA', C: '#8A93A1', N: '#7FA6FF', O: '#FF7A70', F: '#8EDB8E', Cl: '#7FD07F', Br: '#D98A66', I: '#B98CF5', S: '#EFCB55', Se: '#E8B85A', P: '#FFA45C', B: '#F2A895', Be: '#B9DD78', Al: '#B4BCCC', Si: '#CDB68F', Xe: '#5FCAD6', Kr: '#5FCAD6'};
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const chg = q => (Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : '−');
+const pretty = (body, q) => esc(body).replace(/(\d+)/g, '<sub>$1</sub>') + (q ? `<sup>${chg(q)}</sup>` : '');
+const canon = f => { try { const p = C.parse(f); return p.body + '|' + p.charge; } catch (e) { return f; } };
+const PRE = new Map(PRESETS.flatMap(g => g[1]).map(([f]) => [canon(f), f]));
+
+let cur = null, inited = false, pending = null;
+let renderer, scene, camera, controls, model = null, viewer, labs = [], fitDist = 8;
+const HOME = new THREE.Vector3(0.55, 0.4, 1).normalize();
+const Y = new THREE.Vector3(0, 1, 0);
+const V3 = a => new THREE.Vector3(a[0], a[1], a[2]);
+
+function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+function compute(f) {
+  const m = C.molecule(f), s = C.solve(m, false), form = s.res[0];
+  const geo = M.build(m, s, form);
+  // turn polar molecules so the net dipole points up the screen
+  const dp = M.dipoles(m, s, form, geo, true);
+  if (dp.mag > 0.05 && !m.charge) {
+    const q = new THREE.Quaternion().setFromUnitVectors(V3(dp.net).normalize(), Y);
+    const r = a => { const v = V3(a).applyQuaternion(q); return [v.x, v.y, v.z]; };
+    geo.pos = geo.pos.map(r);
+    geo.lps = geo.lps.map(list => list.map(l => ({dir: r(l.dir), n: l.n})));
+  }
+  cur = {f, m, s, form, geo};
+  S.f = f;
+}
+function submit(f) {
+  const hint = $('#pHint'), inp = $('#pIn');
+  try { compute(f); hint.textContent = ''; inp.removeAttribute('aria-invalid'); save(); render(true); }
+  catch (e) { hint.textContent = e.message; inp.setAttribute('aria-invalid', 'true'); }
+}
+
+/* ---------- three.js ---------- */
+function initScene() {
+  viewer = $('#pViewer');
+  renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  viewer.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(34, 1, 0.05, 300);
+  camera.position.copy(HOME).multiplyScalar(8); scene.add(camera);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 2; controls.maxDistance = 60; controls.autoRotateSpeed = 1.6;
+  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f2a, 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(1, 1.5, 2); camera.add(key);
+  const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
+  const resize = () => { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(viewer); resize();
+  const loop = () => {
+    requestAnimationFrame(loop);
+    if ($('#pApp').hidden) return;
+    controls.autoRotate = S.spin;
+    controls.update(); renderer.render(scene, camera); placeLabels();
+  };
+  loop();
+}
+function dispose(o) { if (!o) return; scene.remove(o); o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+function cyl(a, b, r, mat) {
+  const d = new THREE.Vector3().subVectors(b, a), L = d.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 16, 1), mat);
+  m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(Y, d.normalize());
+  return m;
+}
+function ball(p, r, color) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), new THREE.MeshStandardMaterial({color: new THREE.Color(color), roughness: 0.42, metalness: 0.05}));
+  m.position.copy(p); return m;
+}
+// chemists' dipole arrow: crossed tail at the δ+ end, head at the δ− end
+function arrow(from, to, r, color, group) {
+  const mat = new THREE.MeshStandardMaterial({color, roughness: 0.4, emissive: color, emissiveIntensity: 0.25});
+  const d = new THREE.Vector3().subVectors(to, from), L = d.length(), u = d.clone().normalize();
+  const head = Math.min(L * 0.4, r * 5);
+  const shaftEnd = to.clone().addScaledVector(u, -head);
+  group.add(cyl(from, shaftEnd, r, mat));
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, head, 20), mat);
+  cone.position.copy(shaftEnd).addScaledVector(u, head / 2); cone.quaternion.setFromUnitVectors(Y, u);
+  group.add(cone);
+  // the "+" cross bar near the tail
+  let p = new THREE.Vector3().crossVectors(u, camera.position.clone().sub(from).normalize());
+  if (p.length() < 1e-3) p = new THREE.Vector3().crossVectors(u, new THREE.Vector3(1, 0, 0));
+  p.normalize();
+  const cpt = from.clone().addScaledVector(u, Math.min(L * 0.18, 0.18));
+  group.add(cyl(cpt.clone().addScaledVector(p, -r * 3.2), cpt.clone().addScaledVector(p, r * 3.2), r * 0.8, mat));
+}
+function label(html, p, cls, lift) {
+  const el = document.createElement('div'); el.className = cls; el.innerHTML = html;
+  $('#pLabels').appendChild(el); labs.push({el, v: p.clone(), lift: lift || 0});
+}
+function placeLabels() {
+  const w = viewer.clientWidth, h = viewer.clientHeight, v = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  for (const L of labs) {
+    v.copy(L.v).addScaledVector(up, L.lift).project(camera);
+    if (v.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.transform = `translate(${((v.x + 1) / 2 * w).toFixed(1)}px,${((1 - v.y) / 2 * h).toFixed(1)}px) translate(-50%,-50%)`;
+  }
+}
+const qColor = (q, base) => {
+  const c = new THREE.Color(base);
+  if (!S.map) return c;
+  const t = Math.min(1, Math.abs(q) / 0.9);
+  return new THREE.Color(0xD8DDE6).lerp(new THREE.Color(q < 0 ? 0xFF5A5A : 0x5A8CFF), 0.15 + 0.85 * t);
+};
+
+function build(dp) {
+  dispose(model); model = new THREE.Group(); scene.add(model);
+  $('#pLabels').innerHTML = ''; labs = [];
+  const {m, s, form, geo} = cur, P = geo.pos.map(V3);
+  const rad = e => e === 'H' ? 0.22 : 0.32;
+  m.atoms.forEach((e, i) => {
+    model.add(ball(P[i], rad(e), S.map ? qColor(dp.q[i], COL[e]) : (COL[e] || '#B4BCCC')));
+    if (S.map) { // soft halo coloured by partial charge
+      const t = Math.min(1, Math.abs(dp.q[i]) / 0.9);
+      if (t > 0.05) {
+        const h = new THREE.Mesh(new THREE.SphereGeometry(rad(e) * 2.1, 28, 18), new THREE.MeshBasicMaterial({color: dp.q[i] < 0 ? 0xFF5A5A : 0x5A8CFF, transparent: true, opacity: 0.1 + 0.18 * t, depthWrite: false}));
+        h.position.copy(P[i]); model.add(h);
+      }
+    }
+    if (S.dl && Math.abs(dp.q[i]) >= 0.15) label(dp.q[i] < 0 ? 'δ−' : 'δ+', P[i], 'pdl ' + (dp.q[i] < 0 ? 'neg' : 'pos'), rad(e) + 0.22);
+  });
+  const bondMat = new THREE.MeshStandardMaterial({color: 0xAEB6C4, roughness: 0.5});
+  const cen = new THREE.Vector3();
+  P.forEach(p => cen.add(p)); cen.multiplyScalar(1 / P.length);
+  m.edges.forEach(([a, b], k) => {
+    const o = form.ord[k], u = new THREE.Vector3().subVectors(P[b], P[a]).normalize();
+    let perp = new THREE.Vector3().crossVectors(u, new THREE.Vector3().subVectors(P[a], cen));
+    if (perp.length() < 1e-3) perp = new THREE.Vector3().crossVectors(u, Math.abs(u.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0));
+    perp.normalize();
+    for (let j = 0; j < o; j++) {
+      const off = perp.clone().multiplyScalar((j - (o - 1) / 2) * 0.15);
+      model.add(cyl(P[a].clone().add(off), P[b].clone().add(off), o > 1 ? 0.045 : 0.065, bondMat));
+    }
+  });
+  // lone pairs on inner atoms (the ones that count toward the dipole)
+  if (S.lp) {
+    const lpMat = new THREE.MeshPhongMaterial({color: 0x8FA9F0, transparent: true, opacity: 0.26, depthWrite: false, shininess: 40});
+    geo.lps.forEach((list, i) => {
+      if (s.ctx.deg[i] < 2 && m.atoms.length > 1) return;
+      for (const l of list) {
+        const u = V3(l.dir).normalize(), lobe = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), lpMat);
+        lobe.scale.set(0.24, 0.44, 0.24); lobe.position.copy(P[i]).addScaledVector(u, 0.58); lobe.quaternion.setFromUnitVectors(Y, u);
+        model.add(lobe);
+      }
+    });
+  }
+  // bond dipoles, drawn beside each bond
+  if (S.bd) {
+    dp.bonds.forEach(b => {
+      if (b.den < 0.05) return;
+      const pos = P[b.neg === b.b ? b.a : b.b], neg = P[b.neg];
+      const u = new THREE.Vector3().subVectors(neg, pos), L = u.length(); u.normalize();
+      const mid = pos.clone().add(neg).multiplyScalar(0.5);
+      let side = new THREE.Vector3().subVectors(mid, cen); side.addScaledVector(u, -side.dot(u));
+      if (side.length() < 0.05) { side = new THREE.Vector3().crossVectors(u, Math.abs(u.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0)); }
+      side.normalize();
+      const len = Math.min(L * 0.92, 0.3 + 0.62 * b.den), c0 = mid.clone().addScaledVector(side, 0.3);
+      arrow(c0.clone().addScaledVector(u, -len / 2), c0.clone().addScaledVector(u, len / 2), 0.028, 0x8FB4FF, model);
+    });
+  }
+  let R = 1.2;
+  P.forEach(p => { R = Math.max(R, p.distanceTo(cen) + 0.6); });
+  // net dipole through the centre
+  if (S.net && dp.mag > 0.05 && !m.charge) {
+    const u = V3(dp.net).normalize(), L = Math.max(0.9, 1.1 * dp.mag);
+    arrow(cen.clone().addScaledVector(u, -L / 2), cen.clone().addScaledVector(u, L / 2), 0.06, 0xF2C46D, model);
+    label('μ', cen.clone().addScaledVector(u, L / 2 + 0.28), 'pmu');
+    R = Math.max(R, L / 2 + 0.6);
+  }
+  fitDist = R / Math.tan(THREE.MathUtils.degToRad(17)) * 1.12;
+}
+function fit(reset) {
+  const asp = camera.aspect || 1, d = fitDist / Math.min(1, asp * 0.95);
+  const dir = reset ? HOME.clone() : camera.position.clone().sub(controls.target).normalize();
+  controls.target.set(0, 0, 0); camera.position.copy(dir.multiplyScalar(d)); controls.update();
+}
+
+/* ---------- panel ---------- */
+function renderPresets() {
+  const key = canon(S.f);
+  $('#pPresets').innerHTML = PRESETS.map(([g, list]) =>
+    `<div><h3>${esc(g)}</h3><div class="tex">` + list.map(([f, n]) => {
+      const p = C.parse(f);
+      return `<button type="button" data-f="${esc(f)}" aria-pressed="${canon(f) === key}"><b>${pretty(p.body, p.charge)}</b><small>${esc(n)}</small></button>`;
+    }).join('') + '</div></div>').join('');
+}
+function bondKind(d) { return d < 0.4 ? 'nonpolar covalent' : d < 1.8 ? 'polar covalent' : 'very polar / ionic'; }
+function render(reset) {
+  const {m, s, form, geo} = cur;
+  const dp = M.dipoles(m, s, form, geo, S.lp);
+  build(dp);
+  $('#pIn').value = S.f;
+  renderPresets();
+  // shape of the most-connected atom
+  const deg = s.ctx.deg;
+  const centers = m.atoms.map((e, i) => i).filter(i => deg[i] >= 2);
+  const vs = C.vsepr(m, s, form);
+  const main = vs.sort((a, b) => b.X - a.X)[0];
+  const shape = centers.length === 1 && main && main.sh ? main.sh[1] : m.atoms.length === 2 ? 'linear' : null;
+  const maxDen = Math.max(0, ...dp.bonds.map(b => b.den));
+  const key = m.body + (m.charge ? '|' + m.charge : '');
+  const meas = m.charge ? null : MEAS[m.body];
+  let verdict, cls, why;
+  if (m.charge) {
+    verdict = 'Ion'; cls = 'ion';
+    why = `It carries an overall charge of ${chg(m.charge)}, so it is an ion. A dipole moment isn't defined for an ion, because it depends on where you put the origin. The bond dipoles are still shown.`;
+  } else if (dp.mag > 0.15) {
+    verdict = 'Polar'; cls = 'polar';
+    const neg = m.atoms.map((e, i) => i).filter(i => dp.q[i] < 0).sort((a, b) => V3(geo.pos[b]).dot(V3(dp.net)) - V3(geo.pos[a]).dot(V3(dp.net)))[0];
+    const lp = S.lp && geo.lps.some((l, i) => l.length && deg[i] >= 2);
+    why = `The bond dipoles${lp ? ' and lone pairs' : ''} don't cancel in the ${shape ? `<b>${shape}</b> ` : ''}shape${shape ? '' : ' of this molecule'}.${neg != null ? ` The negative end is toward ${esc(m.atoms[neg])}.` : ''}`;
+  } else if (dp.mag > 0.05) {
+    verdict = 'Slightly polar'; cls = 'polar';
+    why = 'The bond dipoles almost cancel, leaving only a small net dipole.';
+  } else {
+    verdict = 'Nonpolar'; cls = 'nonpolar';
+    why = maxDen < 0.05 ? 'Every bond joins atoms of equal electronegativity, so no bond has a dipole.'
+      : maxDen < 0.4 ? `The bonds are only slightly polar (ΔEN ${maxDen.toFixed(2)})${dp.bonds.length > 1 ? ', and they are arranged symmetrically' : ''}.`
+      : `The bonds are polar, but they are arranged symmetrically${shape ? ` (<b>${shape}</b>)` : ''}, so the bond dipoles cancel.`;
+  }
+  const note = NOTES[m.body] && !m.charge ? `<p class="pnote">${NOTES[m.body]}</p>` : '';
+  $('#pVerdict').className = 'pverdict ' + cls;
+  $('#pVerdict').innerHTML = `<div class="pv">${verdict}</div><p>${why}</p>${note}`;
+  // readout
+  const rows = [];
+  if (!m.charge) rows.push(['Net dipole (model)', `${dp.mag.toFixed(2)}<small>vector sum of the bond${S.lp ? ' and lone-pair' : ''} dipoles, in ΔEN units (not debye)</small>`]);
+  if (meas != null) rows.push(['Measured μ', `<b class="key">${meas.toFixed(2)} D</b><small>gas phase, CRC Handbook</small>`]);
+  else if (!m.charge) rows.push(['Measured μ', '—<small>no reference value for this one</small>']);
+  if (shape) rows.push(['Shape', shape]);
+  // bonds by type
+  const g = new Map();
+  dp.bonds.forEach(b => {
+    const [x, y] = [m.atoms[b.a], m.atoms[b.b]].sort((p, q) => C.en(p) - C.en(q));
+    const k = `${x}–${y}`;
+    if (!g.has(k)) g.set(k, {k, den: b.den, n: 0, neg: m.atoms[b.neg]});
+    g.get(k).n++;
+  });
+  const bl = [...g.values()].sort((a, b) => b.den - a.den).map(b =>
+    `<div class="pbond"><span class="pbk">${esc(b.k)}${b.n > 1 ? ` <small>×${b.n}</small>` : ''}</span><span class="pbar"><i style="width:${Math.min(100, b.den / 2.5 * 100).toFixed(0)}%"></i></span><span class="pbv">${b.den.toFixed(2)}</span><small>${bondKind(b.den)}${b.den >= 0.05 ? ` · δ− on ${esc(b.neg)}` : ''}</small></div>`).join('');
+  $('#pRead').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('#pBonds').innerHTML = bl || '<p class="note">No bonds — a single atom.</p>';
+  $('#pTitle').innerHTML = pretty(m.body, m.charge);
+  $('#pSub').innerHTML = `<b>${verdict.toLowerCase()}</b>${meas != null ? ` · μ = ${meas.toFixed(2)} D` : ''}${shape ? ' · ' + shape : ''}`;
+  for (const [id, k] of [['#pBd', 'bd'], ['#pLp', 'lp'], ['#pNet', 'net'], ['#pDl', 'dl'], ['#pMap', 'map'], ['#pSpin', 'spin']]) $(id).checked = S[k];
+  if (reset) fit(true);
+}
+
+function bind() {
+  $('#pForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#pIn').value.trim(); submit(PRE.get(canon(v)) || v); });
+  $('#pIn').addEventListener('input', () => { $('#pIn').removeAttribute('aria-invalid'); $('#pHint').textContent = ''; });
+  $('#pPresets').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (b) submit(b.dataset.f); });
+  for (const [id, k] of [['#pBd', 'bd'], ['#pLp', 'lp'], ['#pNet', 'net'], ['#pDl', 'dl'], ['#pMap', 'map'], ['#pSpin', 'spin']])
+    $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k !== 'spin') render(false); });
+  $('#pReset').addEventListener('click', () => fit(true));
+  $('#pToV').addEventListener('click', () => window.openVSEPR && window.openVSEPR(S.f));
+}
+
+window.openPolarity = function (f) { pending = f; try { const o = JSON.parse(localStorage.getItem(KEY) || '{}'); o.f = f; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} location.hash = '#polarity'; };
+window.initPolarity = function () {
+  if (!inited) {
+    inited = true; load(); bind(); initScene();
+    try { compute(pending || S.f); } catch (e) { compute('H2O'); }
+    pending = null; render(true); return;
   }
   if (pending) { const f = pending; pending = null; submit(f); }
 };
@@ -4176,7 +4692,10 @@ window.initVSEPR = function () {
        tags: ['Formal charge', 'Resonance', 'Octet exceptions']},
       {id: 'vsepr', app: '#vApp', nav: 'VSEPR shapes', title: 'VSEPR Model', init: () => window.initVSEPR(),
        desc: 'Build any molecule in 3D from its electron domains: see where lone pairs sit, how they squeeze bond angles, and whether it is polar.',
-       tags: ['AXₙEₘ', 'Lone-pair lobes', 'Bond angles']}
+       tags: ['AXₙEₘ', 'Lone-pair lobes', 'Bond angles']},
+      {id: 'polarity', app: '#pApp', nav: 'Polarity', title: 'Molecular Polarity', init: () => window.initPolarity(),
+       desc: 'See each bond dipole as an arrow in 3D, add them up, and find out why CO₂ is nonpolar but H₂O is polar, with measured dipole moments.',
+       tags: ['Bond dipoles', 'Net dipole μ', 'δ+ / δ−']}
     ]},
     {name: 'Thermochemistry', blurb: 'Measuring the heat of a reaction', pages: [
       {id: 'calorimeter', app: '#cApp', nav: 'Bomb calorimeter', title: 'Bomb Calorimeter', init: () => window.initCalorimeter(),
