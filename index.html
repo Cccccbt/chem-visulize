@@ -525,6 +525,27 @@ body.side-off .app > .panel{display:none}
 .bbox.hyb{border-color:#B98CF5}
 .bbox.left{border-color:#FF8FB8}
 .bbox.dim{border-color:var(--line)}
+.borbs{display:flex;flex-wrap:wrap;gap:5px}
+.borbs button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:4px 8px;font:500 12.5px var(--f-mono);display:flex;align-items:center;gap:6px}
+.borbs button small{font:400 10.5px var(--f-body);color:var(--muted);margin-left:2px}
+.borbs button sub{font-size:.75em;vertical-align:-.2em;line-height:0}
+.borbs button i{font:600 11px var(--f-body);font-style:normal;color:var(--nucleus);letter-spacing:-.1em}
+.borbs button i.be0{color:var(--muted)}
+.borbs button:hover{border-color:var(--accent)}
+.borbs button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel);color:var(--accent)}
+.borb{border:1px solid var(--line);border-radius:8px;background:var(--raise);padding:10px 12px;font-size:12.5px;line-height:1.55}
+.borb > b{font:600 14px var(--f-mono)}
+.borb b sub,.borb p sub{font-size:.75em;vertical-align:-.2em;line-height:0}
+.borb b small{font:400 11px var(--f-body);color:var(--muted);margin-left:4px}
+.borb p{margin:6px 0 0}
+.borb .bmut{color:var(--muted)}
+.borb .bform{font:500 13px var(--f-mono);color:var(--accent);overflow-wrap:anywhere}
+.bchar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:8px;background:var(--bg)}
+.bchar .cs{background:#F2C46D}.bchar .cp{background:#7FA6FF}.bchar .cd{background:#8EDB8E}
+.bcharl{display:flex;gap:12px;margin-top:4px;font:500 11px var(--f-mono)}
+.bcharl .cs{color:#F2C46D}.bcharl .cp{color:#7FA6FF}.bcharl .cd{color:#8EDB8E}
+#bAll:disabled{opacity:.4;cursor:default}
+.blab.dim{color:var(--muted);background:none;border-color:transparent}
 .bplay{align-self:flex-start}
 .bchart{height:150px}
 @media (prefers-reduced-motion:reduce){ .brow{transition:none} }
@@ -1138,6 +1159,10 @@ body.side-off .app > .panel{display:none}
       <section aria-label="Overlap">
         <h2 class="sec-h">Overlap</h2>
         <div class="bchips" id="bType"></div>
+        <div class="seg" role="radiogroup" aria-label="View" id="bView" style="margin-top:12px">
+          <button type="button" role="radio" data-v="bond" title="Surface of the combined wavefunction ψA + ψB">Bond (ψ<sub>A</sub> + ψ<sub>B</sub>)</button>
+          <button type="button" role="radio" data-v="sep" title="The two atomic orbitals, see-through">Separate orbitals</button>
+        </div>
       </section>
       <section aria-label="Distance" class="ctl">
         <div class="slider">
@@ -1150,6 +1175,16 @@ body.side-off .app > .panel{display:none}
       </section>
     </div>
 
+    <section aria-label="Single orbital" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0"><span>Look at one orbital</span><button type="button" class="ptbtn" id="bAll">Show all</button></h2>
+      <div class="borbs" id="bOrbs"></div>
+      <div class="seg" role="radiogroup" aria-label="Other orbitals" id="bOthers" hidden>
+        <button type="button" role="radio" data-o="faint">Others faint</button>
+        <button type="button" role="radio" data-o="hidden">Others hidden</button>
+      </div>
+      <div class="borb" id="bOrbInfo" hidden></div>
+    </section>
+
     <section aria-label="Display" class="ctl">
       <h2 class="sec-h" style="margin-bottom:0">Display</h2>
       <div class="toggles">
@@ -1161,7 +1196,7 @@ body.side-off .app > .panel{display:none}
     </section>
 
     <p class="note"><b>How it works.</b> In valence bond theory, each bond is a pair of electrons shared in the overlap of one orbital from each atom. More overlap gives a stronger bond. To make its bonds point the right way, an atom can <b>hybridize</b>: it mixes its s and p (and d) orbitals into equivalent hybrids. That needs, when there aren't enough unpaired electrons, <b>promoting</b> an electron to a higher orbital first. Head-on overlap along the bond axis gives a <b>σ bond</b>. Side-on overlap of parallel p orbitals gives a <b>π bond</b>, which sits above and below the axis. A double bond is σ + π, and a triple bond is σ + 2π.</p>
-    <p class="note"><b>Shapes shown</b> follow the angular part of each orbital, sharpened so the lobes are easy to tell apart. The darker shade is the negative phase. The energy curve is a schematic Morse curve, not data for a particular molecule. Hybrids with d orbitals (sp³d, sp³d²) are the textbook model; modern calculations show d orbitals contribute little to these bonds.</p>
+    <p class="note"><b>Shapes shown</b> follow the angular part of each orbital, sharpened so the lobes are easy to tell apart. The darker shade is the negative phase. The bond view draws one surface of constant |ψ<sub>A</sub> + ψ<sub>B</sub>| (in-phase overlap). The energy curve is a schematic Morse curve, not data for a particular molecule. Hybrids with d orbitals (sp³d, sp³d²) are the textbook model; modern calculations show d orbitals contribute little to these bonds.</p>
   </aside>
 </div>
 
@@ -4840,7 +4875,7 @@ window.VBCore = (function () {
 const V = window.VBCore;
 const $ = s => document.querySelector(s);
 const KEY = 'aov.vbt';
-const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, el: true, lbl: true, spin: false};
+const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'bond'};
 const TYPES = {
   ss: {name: 's–s', bond: 'σ', r0: 1.45, D: 1.0, desc: 'Two s orbitals are spheres, so they can only overlap along the line between the nuclei.'},
   sp: {name: 's–p', bond: 'σ', r0: 1.85, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
@@ -4853,6 +4888,7 @@ const SUP = {2: '²', 3: '³'};
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [];
+let camGoal = null, dragging = false;
 let mixT = 0, mixGoal = 0, bondB = 0, bondGoal = 0, dCur = 3.2, dGoal = 3.2, dirty = true, last = 0;
 const HOME = new THREE.Vector3(0.75, 0.55, 1).normalize();
 const Y = new THREE.Vector3(0, 1, 0);
@@ -4891,19 +4927,26 @@ function initScene() {
     const m0 = mixT, b0 = bondB, d0 = dCur;
     mixT = ease(mixT, mixGoal, 4); bondB = ease(bondB, bondGoal, 4); dCur = ease(dCur, dGoal, 3);
     if (mixT !== m0 || bondB !== b0 || dCur !== d0) dirty = true;
+    if (d0 !== dCur && dCur === dGoal) dirty = true;
     if (dirty) { dirty = false; build(); if (S.mode === 'ov') { drawChart(); renderOvRead(); } }
+    if (camGoal != null) { // glide the camera in or out along its current direction
+      const off = camera.position.clone().sub(controls.target), L = off.length(), nL = L + (camGoal - L) * Math.min(1, dt * 3);
+      camera.position.copy(controls.target).addScaledVector(off.normalize(), nL);
+      if (Math.abs(camGoal - nL) < 0.02) camGoal = null;
+    }
     controls.autoRotate = S.spin;
     controls.update(); renderer.render(scene, camera); placeLabels();
   };
   requestAnimationFrame(loop);
+  controls.addEventListener('start', () => { camGoal = null; });
 }
 function dispose(o) { if (!o) return; scene.remove(o); o.traverse(c => { if (c.geometry && c.geometry !== UNIT) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
 const shade = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 /* an orbital surface: lobe length L along the biggest lobe, shape = |f(θ,φ)|^POW (the angular part, sharpened
    so lobes read clearly), coloured by the sign of f */
-const POW = 2.6;
+const POW = 4.2;
 // s-rich orbitals are drawn smaller than p, d or hybrid ones
-const Lof = (c, big) => (big || 1.6) * (0.36 + 0.64 * Math.min(1, (1 - c[0] * c[0]) * 4));
+const Lof = (c, big) => (big || 1.85) * (0.34 + 0.66 * Math.min(1, (1 - c[0] * c[0]) * 4));
 function orbital(c, L, color, opts = {}) {
   const base = UNIT.attributes.position, n = base.count;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), fs = new Float32Array(n);
@@ -4925,7 +4968,7 @@ function orbital(c, L, color, opts = {}) {
   if (opts.rot) m.quaternion.copy(opts.rot);
   return m;
 }
-function dot(p, color) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.065, 14, 10), new THREE.MeshBasicMaterial({color: color || 0xFFE7A8})); m.position.copy(p); return m; }
+function dot(p, color) { const top = S.mode === 'ov' && S.ovView === 'bond'; const m = new THREE.Mesh(new THREE.SphereGeometry(0.065, 14, 10), new THREE.MeshBasicMaterial({color: color || 0xFFE7A8, depthTest: !top})); m.position.copy(p); if (top) m.renderOrder = 4; return m; }
 function electrons(group, tip, dir, n) {
   if (!S.el || !n) return;
   let perp = new THREE.Vector3().crossVectors(dir, Math.abs(dir.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0)).normalize();
@@ -4954,102 +4997,130 @@ const BNAME = n => ['s', 'p<sub>x</sub>', 'p<sub>y</sub>', 'p<sub>z</sub>', 'd<s
 function build() {
   dispose(model); model = new THREE.Group(); scene.add(model);
   $('#bLabels').innerHTML = ''; labs = [];
-  if (S.mode === 'hyb') buildHyb(); else buildOv();
+  if (S.mode === 'hyb') buildHyb(); else if (S.ovView === 'bond') buildBond(); else buildOv();
 }
 
 /* ---------- hybridization ---------- */
+// one orbital in focus: the others fade (or hide)
+function vis(id) { return !S.solo || S.solo === id ? 1 : S.others === 'hidden' ? 0 : 0.06; }
+const op = (id, base) => { const a = vis(id); return a === 1 ? base : a; };
+const atomicE = (cfg, k) => { const c = S.step === 1 ? cfg.ground : cfg.excited; return k === 0 ? c.s[0] : k <= 3 ? c.p[k - 1] : c.d[k - 4]; };
+
 function buildHyb() {
   const set = S.set, [sym, val, n, partner] = atom(), cfg = V.config(set, val, n);
   const t = mixT, uses = V.USES[set], left = V.LEFT[set];
   model.add(nucleus(new THREE.Vector3(), 0.16));
   const names = BNAME(n), info = V.INFO[set];
-  const atomicE = k => { // electrons in basis orbital k in the ground or promoted state
-    const c = S.step === 1 ? cfg.ground : cfg.excited;
-    return k === 0 ? c.s[0] : k <= 3 ? c.p[k - 1] : c.d[k - 4];
-  };
   // the orbitals that mix
   uses.forEach((k, i) => {
+    const id = 'u' + i, a = vis(id);
+    if (!a) return;
     const c = V.mix(set, i, t);
     const tgt = t > 0.5 && cfg.hyb[i] === 2 ? COLS.lp : COLS.hyb;
     const col = new THREE.Color(COLS[BCOL[k]]).lerp(new THREE.Color(tgt), t);
     const isS = t < 0.02 && k === 0;
     const L = Lof(c);
-    model.add(orbital(c, L, '#' + col.getHexString(), {opacity: isS ? 0.3 : 0.6}));
+    model.add(orbital(c, L, '#' + col.getHexString(), {opacity: op(id, isS ? 0.32 : 0.6)}));
+    if (a !== 1) return;
     const {dir} = V.lobeDir(c);
     const u = toT(dir).normalize(), tip = u.clone().multiplyScalar(L * 0.72);
     if (t < 0.02) {
-      electrons(model, isS ? new THREE.Vector3(0.18, 0.18, 0.18) : tip, isS ? new THREE.Vector3(0, 0, 1) : u, atomicE(k));
+      electrons(model, isS ? new THREE.Vector3(0.18, 0.18, 0.18) : tip, isS ? new THREE.Vector3(0, 0, 1) : u, atomicE(cfg, k));
       if (S.lbl) label(names[k], isS ? new THREE.Vector3(-0.42, 0.42, 0.3) : u.clone().multiplyScalar(L + 0.3));
     } else if (t > 0.98) {
       electrons(model, tip, u, cfg.hyb[i]);
-      if (S.lbl && (bondB < 0.01 || cfg.hyb[i] === 2)) label(info.name + (cfg.hyb[i] === 2 ? ' <small>lone pair</small>' : ''), u.clone().multiplyScalar(L + 0.32));
+      if (S.lbl && (bondB < 0.01 || cfg.hyb[i] === 2 || S.solo === id)) label(info.name + (cfg.hyb[i] === 2 ? ' <small>lone pair</small>' : ''), u.clone().multiplyScalar(L + 0.32));
     }
   });
   // p orbitals that stay out of the mix
   left.forEach((k, j) => {
+    const id = 'l' + j, a = vis(id);
+    if (!a) return;
     const c = V.unit(k), {dir} = V.lobeDir(c), L = Lof(c);
     const col = t < 0.02 ? COLS.p : '#' + new THREE.Color(COLS.p).lerp(new THREE.Color(COLS.left), Math.min(1, t)).getHexString();
-    model.add(orbital(c, L, col, {opacity: 0.45}));
+    model.add(orbital(c, L, col, {opacity: op(id, 0.45)}));
+    if (a !== 1) return;
     const u = toT(dir).normalize(), tip = u.clone().multiplyScalar(L * 0.72);
-    const ne = t < 0.02 ? atomicE(k) : t > 0.98 ? cfg.left[j] : 0;
-    electrons(model, tip, u, ne);
+    electrons(model, tip, u, t < 0.02 ? atomicE(cfg, k) : t > 0.98 ? cfg.left[j] : 0);
     if (S.lbl && (t < 0.02 || t > 0.98)) label(names[k] + (t > 0.98 ? ' <small>unhybridized</small>' : ''), u.clone().multiplyScalar(L + 0.3));
   });
   // step 4: partners come in along the half-filled hybrids
   if (bondB > 0.01 && t > 0.98) {
     uses.forEach((k, i) => {
       if (cfg.hyb[i] !== 1) return;
+      const id = 'g' + i, a = vis(id);
       const c = V.mix(set, i, 1), {dir} = V.lobeDir(c);
       const u = toT(dir).normalize(), len = Lof(c);
       const dist = len * 0.8 + (partner === 'H' ? 0.55 : 0.95) + (1 - bondB) * 3.4, at = u.clone().multiplyScalar(dist);
       model.add(nucleus(at, 0.11));
+      if (!a) return;
       if (partner === 'H') {
-        model.add(orbital([1, 0, 0, 0, 0, 0], 0.55, COLS.lig, {at, opacity: 0.5}));
-        electrons(model, at.clone().addScaledVector(u, -0.3), u, 1);
-        if (S.lbl) label('H 1s', at.clone().addScaledVector(u, 0.85));
+        model.add(orbital([1, 0, 0, 0, 0, 0], 0.55, COLS.lig, {at, opacity: op(id, 0.5)}));
+        if (a === 1) { electrons(model, at.clone().addScaledVector(u, -0.3), u, 1); if (S.lbl) label('H 1s', at.clone().addScaledVector(u, 0.85)); }
       } else {
         const rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), u.clone().negate());
-        model.add(orbital([0, 1, 0, 0, 0, 0], 1.05, COLS.ligp, {at, rot, opacity: 0.5}));
-        electrons(model, at.clone().addScaledVector(u, -0.7), u, 1);
-        if (S.lbl) label('X p', at.clone().addScaledVector(u, 0.95));
+        model.add(orbital([0, 1, 0, 0, 0, 0], 1.05, COLS.ligp, {at, rot, opacity: op(id, 0.5)}));
+        if (a === 1) { electrons(model, at.clone().addScaledVector(u, -0.7), u, 1); if (S.lbl) label('X p', at.clone().addScaledVector(u, 0.95)); }
       }
-      if (bondB > 0.97) label('σ', u.clone().multiplyScalar(len * 0.88), 'bsig');
+      if (bondB > 0.97 && (!S.solo || S.solo === id || S.solo === 'u' + i)) label('σ', u.clone().multiplyScalar(len * 0.88), 'bsig');
     });
   }
 }
 
 /* ---------- σ and π overlap ---------- */
+// orbitals on each atom: id, name, role
+function ovOrbs() {
+  const k = S.type, out = [];
+  const pair = (id, name, role) => { out.push({id: 'A' + id, name: name + ' <small>left</small>', role}); out.push({id: 'B' + id, name: name + ' <small>right</small>', role}); };
+  if (k === 'ss') pair('s', '1s', 'sphere: overlaps the other 1s head-on → σ');
+  else if (k === 'sp') { out.push({id: 'As', name: '1s <small>left</small>', role: 'sphere: overlaps the p lobe that points at it → σ'}); out.push({id: 'Bp', name: 'p <small>right</small>', role: 'one lobe points at the 1s: head-on overlap → σ'}); }
+  else if (k === 'pp') pair('p', 'p', 'points straight at the other atom: head-on overlap → σ');
+  else if (k === 'pi') pair('p', 'p', 'parallel to the other p, at right angles to the bond: side-on overlap → π');
+  else {
+    const hy = k === 'db' ? 'sp²' : 'sp';
+    pair('h', hy, 'the hybrid pointing at the other atom: head-on overlap → σ');
+    pair('o', hy + ' <small>other' + (k === 'db' ? 's' : '') + '</small>', `holds the bond${k === 'db' ? 's' : ''} to the atom${k === 'db' ? 's' : ''} on the far side (faint nuclei)`);
+    pair('z', 'p', 'unhybridized, perpendicular to the hybrids: side-on overlap → π');
+    if (k === 'tb') pair('y', 'p', 'the second unhybridized p, at 90° to the first: another side-on overlap → second π');
+  }
+  return out;
+}
 function buildOv() {
   const T = TYPES[S.type], d = dCur, A = new THREE.Vector3(-d / 2, 0, 0), B = new THREE.Vector3(d / 2, 0, 0);
   model.add(nucleus(A)); model.add(nucleus(B));
   const near = d < T.r0 + 0.35;
-  const add = (c, sc, col, at, op) => model.add(orbital(c, sc, col, {at, opacity: op || 0.55}));
-  const pxP = [0, 1, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0];
-  const lab = (t, p) => S.lbl && label(t, p);
+  // add an orbital with an id; returns true if it is drawn at full strength (so its electrons and labels show)
+  const add = (id, c, sc, col, at, base) => { const a = vis(id); if (!a) return false; model.add(orbital(c, sc, col, {at, opacity: op(id, base || 0.55)})); return a === 1; };
+  const e1 = (on, p, dir) => { if (on) electrons(model, p, dir || Y, 1); };
+  const pxP = [0, 1, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0], sC = [1, 0, 0, 0, 0, 0];
+  const lab = (on, t, p) => { if (on && S.lbl) label(t, p); };
+  const X1 = new THREE.Vector3(1, 0, 0);
   if (S.type === 'ss') {
-    add([1, 0, 0, 0, 0, 0], 0.85, COLS.s, A); add([1, 0, 0, 0, 0, 0], 0.85, COLS.s, B);
-    lab('1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab('1s', B.clone().add(new THREE.Vector3(0.6, 0.85, 0)));
-    electrons(model, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3)), Y, 1); electrons(model, B.clone().add(new THREE.Vector3(-0.2, 0.25, 0.3)), Y, 1);
+    const a = add('As', sC, 0.85, COLS.s, A), b = add('Bs', sC, 0.85, COLS.s, B);
+    lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, '1s', B.clone().add(new THREE.Vector3(0.6, 0.85, 0)));
+    e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.2, 0.25, 0.3)));
   } else if (S.type === 'sp') {
-    add([1, 0, 0, 0, 0, 0], 0.85, COLS.s, A); add(pxN, 1.3, COLS.p, B);
-    lab('1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab('p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
-    electrons(model, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3)), Y, 1); electrons(model, B.clone().add(new THREE.Vector3(-0.9, 0, 0)), Y, 1);
+    const a = add('As', sC, 0.85, COLS.s, A), b = add('Bp', pxN, 1.3, COLS.p, B);
+    lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
+    e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.9, 0, 0)));
   } else if (S.type === 'pp') {
-    add(pxP, 1.3, COLS.p, A); add(pxN, 1.3, COLS.p, B);
-    lab('p', A.clone().add(new THREE.Vector3(-1.2, 0.5, 0))); lab('p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
-    electrons(model, A.clone().add(new THREE.Vector3(0.9, 0, 0)), Y, 1); electrons(model, B.clone().add(new THREE.Vector3(-0.9, 0, 0)), Y, 1);
+    const a = add('Ap', pxP, 1.3, COLS.p, A), b = add('Bp', pxN, 1.3, COLS.p, B);
+    lab(a, 'p', A.clone().add(new THREE.Vector3(-1.2, 0.5, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
+    e1(a, A.clone().add(new THREE.Vector3(0.9, 0, 0))); e1(b, B.clone().add(new THREE.Vector3(-0.9, 0, 0)));
   } else if (S.type === 'pi') {
-    add(pzC, 1.3, COLS.p, A); add(pzC, 1.3, COLS.p, B);
-    lab('p', A.clone().add(new THREE.Vector3(-0.5, 1.5, 0))); lab('p', B.clone().add(new THREE.Vector3(0.5, 1.5, 0)));
-    electrons(model, A.clone().add(new THREE.Vector3(0, 0.9, 0)), new THREE.Vector3(1, 0, 0), 1); electrons(model, B.clone().add(new THREE.Vector3(0, -0.9, 0)), new THREE.Vector3(1, 0, 0), 1);
+    const a = add('Ap', pzC, 1.3, COLS.p, A), b = add('Bp', pzC, 1.3, COLS.p, B);
+    lab(a, 'p', A.clone().add(new THREE.Vector3(-0.5, 1.5, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(0.5, 1.5, 0)));
+    e1(a, A.clone().add(new THREE.Vector3(0, 0.9, 0)), X1); e1(b, B.clone().add(new THREE.Vector3(0, -0.9, 0)), X1);
   } else {
     const sp2 = S.type === 'db';
-    const hy = sp2 ? V.HYB.sp2 : V.HYB.sp, sc = 1.3;
+    const hy = sp2 ? V.HYB.sp2 : V.HYB.sp;
     const flip = c => c.map((x, k) => (k === 1 ? -x : x));
+    let aH = false, bH = false;
     hy.forEach((c, i) => {
-      const toward = i === 0;
-      add(c, sc, toward ? COLS.hyb : '#6E6290', A, toward ? 0.6 : 0.3);
-      add(flip(c), sc, toward ? COLS.hyb : '#6E6290', B, toward ? 0.6 : 0.3);
+      const toward = i === 0, idA = toward ? 'Ah' : 'Ao', idB = toward ? 'Bh' : 'Bo';
+      const a = add(idA, c, 1.3, toward ? COLS.hyb : '#6E6290', A, toward ? 0.6 : 0.3);
+      const b = add(idB, flip(c), 1.3, toward ? COLS.hyb : '#6E6290', B, toward ? 0.6 : 0.3);
+      if (toward) { aH = a; bH = b; }
       if (!toward) { // the other hybrids hold the atoms' other bonds: show the partner nuclei faintly
         for (const [P, cc] of [[A, c], [B, flip(c)]]) {
           const {dir} = V.lobeDir(cc), u = toT(dir).normalize();
@@ -5057,24 +5128,185 @@ function buildOv() {
         }
       }
     });
-    electrons(model, A.clone().add(new THREE.Vector3(0.75, 0, 0)), Y, 1); electrons(model, B.clone().add(new THREE.Vector3(-0.75, 0, 0)), Y, 1);
-    add(pzC, 1.1, COLS.left, A, 0.5); add(pzC, 1.1, COLS.left, B, 0.5);
-    electrons(model, A.clone().add(new THREE.Vector3(0, 0.8, 0)), new THREE.Vector3(1, 0, 0), 1); electrons(model, B.clone().add(new THREE.Vector3(0, -0.8, 0)), new THREE.Vector3(1, 0, 0), 1);
+    e1(aH, A.clone().add(new THREE.Vector3(0.75, 0, 0))); e1(bH, B.clone().add(new THREE.Vector3(-0.75, 0, 0)));
+    const az = add('Az', pzC, 1.1, COLS.left, A, 0.5), bz = add('Bz', pzC, 1.1, COLS.left, B, 0.5);
+    e1(az, A.clone().add(new THREE.Vector3(0, 0.8, 0)), X1); e1(bz, B.clone().add(new THREE.Vector3(0, -0.8, 0)), X1);
     if (!sp2) {
-      add(pyC, 1.1, COLS.left, A, 0.5); add(pyC, 1.1, COLS.left, B, 0.5);
-      electrons(model, A.clone().add(new THREE.Vector3(0, 0, -0.8)), new THREE.Vector3(1, 0, 0), 1); electrons(model, B.clone().add(new THREE.Vector3(0, 0, 0.8)), new THREE.Vector3(1, 0, 0), 1);
+      const ay = add('Ay', pyC, 1.1, COLS.left, A, 0.5), by = add('By', pyC, 1.1, COLS.left, B, 0.5);
+      e1(ay, A.clone().add(new THREE.Vector3(0, 0, -0.8)), X1); e1(by, B.clone().add(new THREE.Vector3(0, 0, 0.8)), X1);
     }
-    lab(sp2 ? 'sp²' : 'sp', A.clone().add(new THREE.Vector3(-0.2, -0.55, 0.6)));
-    lab('p', A.clone().add(new THREE.Vector3(-0.45, 1.25, 0)));
+    lab(aH, sp2 ? 'sp²' : 'sp', A.clone().add(new THREE.Vector3(-0.2, -0.55, 0.6)));
+    lab(az, 'p', A.clone().add(new THREE.Vector3(-0.45, 1.25, 0)));
   }
   if (near) {
-    const sig = S.type !== 'pi';
-    if (sig) label('σ', new THREE.Vector3(0, 0.02, 0), 'bsig');
-    if (S.type === 'pi' || S.type === 'db' || S.type === 'tb') {
-      label('π', new THREE.Vector3(0, 1.0, 0), 'bsig pi');
-      if (S.type === 'tb') label('π', new THREE.Vector3(0, 0, 1.0), 'bsig pi');
+    const s = S.solo || '', sigOn = !s || /^[AB][shp]$/.test(s), piZ = !s || /^[AB]z$/.test(s) || (S.type === 'pi' && /^[AB]p$/.test(s)), piY = !s || /^[AB]y$/.test(s);
+    if (S.type !== 'pi' && sigOn) label('σ', new THREE.Vector3(0, 0.02, 0), 'bsig');
+    if ((S.type === 'pi' || S.type === 'db' || S.type === 'tb') && piZ) label('π', new THREE.Vector3(0, 1.0, 0), 'bsig pi');
+    if (S.type === 'tb' && piY) label('π', new THREE.Vector3(0, 0, 1.0), 'bsig pi');
+  }
+}
+
+/* ---------- bond view: isosurface of ψA + ψB (surface nets) ---------- */
+// wavefunctions in screen coordinates: bond axis = x, "up" = y; nucleus at (cx, 0, 0)
+const AP = 0.5, AS = 0.42;
+const wfS = (cx) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / AS);
+const wfP = (cx, axis, sgn) => (x, y, z) => { const dx = x - cx, r = Math.hypot(dx, y, z), q = axis === 0 ? dx : axis === 1 ? y : z; return sgn * 1.732 * q * Math.exp(-r / AP); };
+// hybrid with s fraction cs² pointing along sgn·x: e^{-r/a}(cs·r + cp·√3·dx)
+const AH = 0.4; // hybrids drawn a little tighter so the σ core doesn't hide the π clouds
+const wfH = (cx, cs, sgn) => { const cp = Math.sqrt(1 - cs * cs); return (x, y, z) => { const dx = x - cx, r = Math.hypot(dx, y, z); return 1.25 * Math.exp(-r / AH) * (cs * r + cp * 1.732 * sgn * dx); }; };
+const ISO = 0.1;
+function surfaceNets(F, nx, ny, nz, org, st) {
+  const cx = nx - 1, cy = ny - 1, cz = nz - 1, vid = new Int32Array(cx * cy * cz).fill(-1);
+  const R = [1, cx, cx * cy], pos = [], idx = [], val = new Float32Array(8);
+  const E = []; for (let n = 0; n < 8; n++) for (let bb = 0; bb < 3; bb++) if (!(n & (1 << bb))) E.push([n, n | (1 << bb)]);
+  for (let z = 0; z < cz; z++) for (let y = 0; y < cy; y++) for (let x = 0; x < cx; x++) {
+    let mask = 0;
+    for (let n = 0; n < 8; n++) { const vv = F[(x + (n & 1)) + nx * ((y + ((n >> 1) & 1)) + ny * (z + ((n >> 2) & 1)))]; val[n] = vv; if (vv > 0) mask |= 1 << n; }
+    if (mask === 0 || mask === 255) continue;
+    let sx = 0, sy = 0, sz = 0, cnt = 0;
+    for (const [p0, p1] of E) {
+      const a0 = val[p0], a1 = val[p1];
+      if ((a0 > 0) === (a1 > 0)) continue;
+      const t = a0 / (a0 - a1);
+      sx += (p0 & 1) + t * ((p1 & 1) - (p0 & 1)); sy += ((p0 >> 1) & 1) + t * (((p1 >> 1) & 1) - ((p0 >> 1) & 1)); sz += ((p0 >> 2) & 1) + t * (((p1 >> 2) & 1) - ((p0 >> 2) & 1)); cnt++;
+    }
+    const cell = x + cx * (y + cy * z);
+    vid[cell] = pos.length / 3;
+    pos.push(org[0] + (x + sx / cnt) * st, org[1] + (y + sy / cnt) * st, org[2] + (z + sz / cnt) * st);
+    const xs = [x, y, z];
+    for (let i = 0; i < 3; i++) {
+      if (!(mask & 1) === !(mask & (1 << (1 << i)))) continue;   // corner 1<<i is the neighbour along axis i
+      const iu = (i + 1) % 3, iv = (i + 2) % 3;
+      if (xs[iu] === 0 || xs[iv] === 0) continue;
+      const du = R[iu], dv = R[iv], A0 = vid[cell], B0 = vid[cell - du], C0 = vid[cell - du - dv], D0 = vid[cell - dv];
+      if (B0 < 0 || C0 < 0 || D0 < 0) continue;
+      if (mask & 1) idx.push(A0, B0, C0, A0, C0, D0); else idx.push(A0, C0, B0, A0, D0, C0);
     }
   }
+  return {pos, idx};
+}
+function isoParts(fn, box, st, color, opacity) {
+  const [x0, x1, y0, y1, z0, z1] = box;
+  const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil((y1 - y0) / st) + 1, nz = Math.ceil((z1 - z0) / st) + 1;
+  const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz);
+  let k = 0;
+  for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
+    const f = fn(x0 + xi * st, y0 + yi * st, z0 + zi * st);
+    P[k] = f - ISO; N[k] = -f - ISO;
+  }
+  const out = [];
+  for (const [F, col] of [[P, new THREE.Color(color)], [N, S.phase ? shade(color, 0.42) : new THREE.Color(color)]]) {
+    const {pos, idx} = surfaceNets(F, nx, ny, nz, [x0, y0, z0], st);
+    if (!idx.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const solid = opacity >= 0.99;
+    out.push(new THREE.Mesh(g, new THREE.MeshPhongMaterial({color: col, transparent: !solid, opacity, depthWrite: solid, side: THREE.DoubleSide, shininess: 60, specular: 0x30343c})));
+  }
+  return out;
+}
+function bondParts() { // [{id, name, role, fn, color}]
+  const d = dCur, xa = -d / 2, xb = d / 2, k = S.type, add = (f, g) => (x, y, z) => f(x, y, z) + g(x, y, z);
+  const SIG = '#B98CF5', PI = '#FF8FB8';
+  const sig = (f, name, role) => ({id: 'σ', name, role, fn: f, color: SIG});
+  if (k === 'ss') return [sig(add(wfS(xa), wfS(xb)), 'σ bond <small>1s + 1s</small>', 'the two 1s spheres merge into one cloud around the axis, thickest between the nuclei')];
+  if (k === 'sp') return [sig(add(wfS(xa), wfP(xb, 0, -1)), 'σ bond <small>1s + p</small>', 'the 1s merges with the p lobe that points at it; the far p lobe (opposite phase) stays behind')];
+  if (k === 'pp') return [sig(add(wfP(xa, 0, 1), wfP(xb, 0, -1)), 'σ bond <small>p + p</small>', 'the facing lobes merge into one fat lobe on the axis between the nuclei; the outer lobes stay')];
+  if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI}];
+  const cs = k === 'db' ? Math.sqrt(1 / 3) : Math.sqrt(1 / 2);
+  const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${k === 'db' ? 'sp² + sp²' : 'sp + sp'}</small>`, 'the hybrids pointing at each other merge on the axis')];
+  out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge above and below the axis', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI});
+  if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, merges in front of and behind the axis', fn: add(wfP(xa, 2, 1), wfP(xb, 2, 1)), color: PI});
+  return out;
+}
+function buildBond() {
+  const T = TYPES[S.type], d = dCur, A = new THREE.Vector3(-d / 2, 0, 0), B = new THREE.Vector3(d / 2, 0, 0);
+  // nuclei and the internuclear axis are drawn on top of the solid surfaces, as in textbook figures
+  for (const P of [A, B]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.copy(P); nu.renderOrder = 3; model.add(nu); }
+  const ax = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-d / 2 - 2.6, 0, 0), new THREE.Vector3(d / 2 + 2.6, 0, 0)]);
+  const axl = new THREE.Line(ax, new THREE.LineBasicMaterial({color: 0x2A2F38, depthTest: false, transparent: true, opacity: 0.9})); axl.renderOrder = 2; model.add(axl);
+  if (S.lbl) label('internuclear axis', new THREE.Vector3(d / 2 + 2.6, 0.22, 0), 'blab dim');
+  const moving = Math.abs(dCur - dGoal) > 1e-3 || dragging;
+  const st = moving ? 0.13 : 0.075, box = [-d / 2 - 2.4, d / 2 + 2.4, -2.1, 2.1, -2.1, 2.1];
+  const near = d < T.r0 + 0.35;
+  for (const part of bondParts()) {
+    const a = vis(part.id);
+    if (!a) continue;
+    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? 1 : a)) model.add(m);
+    if (a !== 1 || !near) continue;
+    if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
+    if (part.id === 'π') { label('π', new THREE.Vector3(0, 1.35, 0), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.85, 0))); model.add(dot(new THREE.Vector3(0.12, 0.85, 0))); } }
+    if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, 1.35), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, 0.85))); model.add(dot(new THREE.Vector3(0.12, 0, 0.85))); } }
+  }
+  if (S.lbl) {
+    const nm = {ss: ['1s', '1s'], sp: ['1s', 'p'], pp: ['p', 'p'], pi: ['p', 'p'], db: ['C', 'C'], tb: ['C', 'C']}[S.type];
+    label(nm[0], A.clone().add(new THREE.Vector3(0, -0.45, 0)), 'blab dim'); label(nm[1], B.clone().add(new THREE.Vector3(0, -0.45, 0)), 'blab dim');
+  }
+}
+
+/* ---------- single-orbital list and details ---------- */
+const BPLAIN = ['s', 'p<sub>x</sub>', 'p<sub>y</sub>', 'p<sub>z</sub>', 'd<sub>z²</sub>', 'd<sub>x²−y²</sub>'];
+function nice(x) { // ±k/√m for small k, m; else a decimal
+  const a = Math.abs(x), sg = x < 0 ? '−' : '+';
+  if (a < 1e-9) return null;
+  for (let m = 1; m <= 12; m++) for (let k = 1; k <= 3; k++) if (Math.abs(a * Math.sqrt(m) - k) < 1e-6) {
+    const g = m === 1 ? String(k) : m === 4 ? (k === 1 ? '½' : k === 2 ? '1' : '3⁄2') : m === 9 ? (k === 1 ? '⅓' : k === 2 ? '⅔' : '1') : `${k === 1 ? '' : k}/√${m}`.replace(/^\//, '1/');
+    return [sg, g];
+  }
+  return [sg, a.toFixed(3)];
+}
+function hybOrbs() {
+  const set = S.set, [sym, val, n, partner] = atom(), cfg = V.config(set, val, n), names = BNAME(n), info = V.INFO[set];
+  const out = [];
+  if (S.step <= 2) {
+    V.USES[set].forEach((k, i) => out.push({id: 'u' + i, name: names[k], kind: 'atomic', k, e: atomicE(cfg, k)}));
+    V.LEFT[set].forEach((k, j) => out.push({id: 'l' + j, name: names[k], kind: 'atomic', k, e: atomicE(cfg, k)}));
+  } else {
+    V.USES[set].forEach((k, i) => out.push({id: 'u' + i, name: `${info.name}<small>${i + 1}</small>`, kind: 'hyb', i, e: cfg.hyb[i]}));
+    V.LEFT[set].forEach((k, j) => out.push({id: 'l' + j, name: names[k], kind: 'left', k, e: cfg.left[j]}));
+    if (S.step === 4) V.USES[set].forEach((k, i) => { if (cfg.hyb[i] === 1) out.push({id: 'g' + i, name: (partner === 'H' ? 'H 1s' : 'X p') + `<small>${i + 1}</small>`, kind: 'lig', i}); });
+  }
+  return {out, set, info, n, partner};
+}
+function renderOrbs() {
+  const hyb = S.mode === 'hyb';
+  const list = hyb ? hybOrbs().out : S.ovView === 'bond' ? bondParts().map(({id, name, role}) => ({id, name, role})) : ovOrbs();
+  if (S.solo && !list.some(o => o.id === S.solo)) S.solo = null;
+  $('#bOrbs').innerHTML = list.map(o => `<button type="button" data-id="${o.id}" aria-pressed="${o.id === S.solo}">${o.name}${hyb && o.e != null ? `<i class="be${o.e}">${o.e === 2 ? '↑↓' : o.e === 1 ? '↑' : '·'}</i>` : ''}</button>`).join('');
+  $('#bAll').disabled = !S.solo;
+  document.querySelectorAll('#bOthers button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.o === S.others)));
+  $('#bOthers').hidden = !S.solo;
+  const box = $('#bOrbInfo');
+  if (!S.solo) { box.hidden = true; return; }
+  box.hidden = false;
+  const o = list.find(x => x.id === S.solo);
+  if (!hyb) { box.innerHTML = `<b>${o.name}</b><p>${o.role}.</p>`; return; }
+  const {set, info, n, partner} = hybOrbs();
+  const eTxt = o.e === 2 ? 'full: a lone pair' : o.e === 1 ? 'half-filled: ready to share with a partner atom' : 'empty';
+  let html = `<b>${o.name}</b>`;
+  const charBar = c => {
+    const s = c[0] ** 2, p = c[1] ** 2 + c[2] ** 2 + c[3] ** 2, d = c[4] ** 2 + c[5] ** 2;
+    const pc = x => Math.round(x * 100);
+    return `<div class="bchar"><span style="flex:${s}" class="cs"></span><span style="flex:${p}" class="cp"></span>${d > 1e-6 ? `<span style="flex:${d}" class="cd"></span>` : ''}</div><div class="bcharl"><span class="cs">s ${pc(s)} %</span><span class="cp">p ${pc(p)} %</span>${d > 1e-6 ? `<span class="cd">d ${pc(d)} %</span>` : ''}</div>`;
+  };
+  if (o.kind === 'atomic') {
+    const kind = o.k === 0 ? 's' : o.k <= 3 ? 'p' : 'd';
+    const shape = kind === 's' ? 'a sphere: no direction' : kind === 'p' ? `two lobes along the ${['x', 'y', 'z'][o.k - 1]} axis, opposite phases` : o.k === 4 ? 'two lobes along z with a ring around the middle' : 'four lobes in the xy plane';
+    html += `<p>A pure atomic orbital: ${shape}. Electrons: ${o.e} (${eTxt}).</p>` + charBar(V.unit(o.k));
+    if (S.step <= 2) html += '<p class="bmut">Go to step 3 to watch this orbital turn into a hybrid.</p>';
+  } else if (o.kind === 'hyb') {
+    const c = V.HYB[set][o.i];
+    const terms = c.map((x, k) => { const nn = nice(x); return nn ? [nn[0], nn[1], n + BPLAIN[k]] : null; }).filter(Boolean);
+    const formula = terms.map(([sg, g, b], j) => `${j === 0 ? (sg === '−' ? '−' : '') : ` ${sg} `}${g === '1' ? '' : g + ' '}${b}`).join('');
+    const {dir} = V.lobeDir(c), dv = toT(dir);
+    html += `<p class="bform">ψ = ${formula}</p>` + charBar(c) +
+      `<p>One of ${V.HYB[set].length} identical ${info.name} hybrids (${info.geo}, ${info.angle}). Its big lobe points along (${[dir[0], dir[1], dir[2]].map(x => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2)).join(', ')}); the small back lobe has the opposite phase. Electrons: ${o.e} (${eTxt}${o.e === 1 && S.step === 4 ? ' — this one makes a σ bond' : ''}).</p>`;
+  } else if (o.kind === 'left') {
+    html += `<p>Left out of the mix, so it stays a pure p orbital, at right angles to every hybrid. Electrons: ${o.e} (${o.e === 1 ? 'half-filled → it can overlap side-on with a neighbour\'s p to make a π bond' : o.e === 0 ? 'empty → it can accept an electron pair from another molecule' : 'full'}).</p>` + charBar(V.unit(o.k));
+  } else {
+    html += `<p>${partner === 'H' ? 'The 1s orbital of an H atom' : 'A p orbital on an outer atom X'}, half-filled. It overlaps head-on with hybrid ${o.i + 1}: the two electrons pair up in the overlap region and make a σ bond.</p>`;
+  }
+  box.innerHTML = html;
 }
 
 /* ---------- panel ---------- */
@@ -5121,7 +5353,9 @@ function renderHybPanel() {
   $('#bSub').innerHTML = `Step <b>${S.step}</b> of 4 · ${['ground state', 'promote', 'hybridize', 'form σ bonds'][S.step - 1]}`;
 }
 const morse = (T, r) => T.D * (Math.pow(1 - Math.exp(-1.6 * (r - T.r0)), 2) - 1);
+function syncView() { document.querySelectorAll('#bView button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === S.ovView))); }
 function renderOvPanel() {
+  syncView();
   $('#bType').innerHTML = Object.entries(TYPES).map(([k, T]) => `<button type="button" data-k="${k}" aria-pressed="${k === S.type}"><b>${T.bond}</b><small>${T.name}</small></button>`).join('');
   const T = TYPES[S.type], sl = $('#bDist');
   sl.min = (T.r0 * 0.7).toFixed(2); sl.max = '4.6'; sl.step = '0.01'; sl.value = String(dGoal);
@@ -5174,28 +5408,36 @@ function render(reset) {
     if (bondGoal === 0) bondB = 0;
     renderHybPanel();
   } else { renderOvPanel(); drawChart(); }
+  renderOrbs();
+  camGoal = wantDist();
   dirty = true;
   if (reset) fit();
 }
+const wantDist = () => (S.mode === 'hyb' ? (S.step === 4 ? 15 : 10.5) : 11.5) / Math.min(1, (camera.aspect || 1) * 0.95);
 function fit() {
-  const asp = camera.aspect || 1, d = (S.mode === 'hyb' ? 10.5 : 11.5) / Math.min(1, asp * 0.95);
+  const d = wantDist(); camGoal = null;
   controls.target.set(0, 0, 0);
   camera.position.copy((S.mode === 'hyb' ? HOME.clone() : new THREE.Vector3(0.18, 0.42, 1).normalize()).multiplyScalar(d));
   controls.update();
 }
 function bind() {
-  $('#bMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; save(); render(true); });
-  $('#bSet').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.set = b.dataset.k; S.ai = 0; save(); render(true); });
-  $('#bAtom').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; S.ai = +b.dataset.i; save(); render(false); });
+  $('#bMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; S.solo = null; save(); render(true); });
+  $('#bSet').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.set = b.dataset.k; S.ai = 0; S.solo = null; save(); render(true); });
+  $('#bAtom').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; S.ai = +b.dataset.i; S.solo = null; save(); render(false); });
   $('#bStep').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.step = +b.dataset.s; save(); render(false); });
   $('#bPrev').addEventListener('click', () => { if (S.step > 1) { S.step--; save(); render(false); } });
   $('#bNext').addEventListener('click', () => { if (S.step < 4) { S.step++; save(); render(false); } });
-  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.type = b.dataset.k; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
-  $('#bDist').addEventListener('input', e => { dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
-  $('#bDist').addEventListener('change', save);
+  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.type = b.dataset.k; S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
+  $('#bDist').addEventListener('input', e => { dragging = true; dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
+  $('#bDist').addEventListener('change', () => { dragging = false; dirty = true; save(); });
+  $('#bDist').addEventListener('pointerup', () => { dragging = false; dirty = true; });
+  $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.ovView = b.dataset.v; S.solo = null; save(); renderOrbs(); dirty = true; syncView(); });
   $('#bPlay').addEventListener('click', () => { dCur = 4.4; dGoal = TYPES[S.type].r0; S.d = dGoal; $('#bDist').value = String(dGoal); dirty = true; save(); });
   for (const [id, k] of [['#bPhase', 'phase'], ['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); dirty = true; });
   $('#bReset').addEventListener('click', fit);
+  $('#bOrbs').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (!b) return; S.solo = S.solo === b.dataset.id ? null : b.dataset.id; save(); renderOrbs(); dirty = true; });
+  $('#bAll').addEventListener('click', () => { S.solo = null; save(); renderOrbs(); dirty = true; });
+  $('#bOthers').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.others = b.dataset.o; save(); renderOrbs(); dirty = true; });
   new ResizeObserver(() => { if (S.mode === 'ov') drawChart(); }).observe($('#bChart'));
 }
 window.initVBT = function () {
