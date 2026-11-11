@@ -4954,12 +4954,12 @@ function dispose(o) { if (!o) return; scene.remove(o); o.traverse(c => { if (c.g
 const shade = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 /* an orbital surface: lobe length L along the biggest lobe, shape = |f(θ,φ)|^POW (the angular part, sharpened
    so lobes read clearly), coloured by the sign of f */
-const POW = 4.2, QW = 1.3;
+const POW = 2.2, QW = 1.0;
 // textbook colouring: + lobes pink, − lobes blue; or by orbital type with the − lobe darker
 const PH_POS = '#F08AA6', PH_NEG = '#5FA4E6';
 const phaseCols = color => S.col === 'phase' ? [new THREE.Color(PH_POS), new THREE.Color(PH_NEG)] : [new THREE.Color(color), shade(color, 0.42)];
 // s-rich orbitals are drawn smaller than p, d or hybrid ones
-const Lof = (c, big) => (big || 1.85) * (0.34 + 0.66 * Math.min(1, (1 - c[0] * c[0]) * 4));
+const Lof = (c, big) => (big || 1.85) * (0.6 + 0.4 * Math.min(1, (1 - c[0] * c[0]) * 4));
 function orbital(c, L, color, opts = {}) {
   const base = UNIT.attributes.position, n = base.count;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), fs = new Float32Array(n);
