@@ -380,6 +380,45 @@ body.side-off .app > .panel{display:none}
   #cApp .qtitle{max-width:calc(100vw - 215px)}
   #cSub{display:none}
 }
+
+/* ---------- Lewis-structure page ---------- */
+.lsvg{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:pan-y}
+.lsvg text{font-family:var(--f-display);font-weight:700;user-select:none;-webkit-user-select:none}
+.lsvg .lb{stroke:#C3CAD6;stroke-width:.048;stroke-linecap:round;fill:none}
+.lsvg .lb.hl{stroke:var(--accent)}
+.lsvg .ld{fill:#DCE1E9}
+.lsvg .ld.hl{fill:var(--accent)}
+.lsvg .lfc{fill:var(--nucleus);font-family:var(--f-mono);font-weight:500}
+.lsvg .lbr{stroke:#8A93A1;stroke-width:.04;fill:none}
+.lsvg .lbrq{fill:var(--fg);font-family:var(--f-mono);font-weight:500}
+.lsvg .lar{stroke:var(--muted);stroke-width:.045;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.lsvg .lcap{fill:var(--muted);font-family:var(--f-mono);font-weight:500}
+.lsvg .lcap.maj{fill:var(--accent)}
+.lsvg .lhit{fill:transparent;cursor:default}
+.lsvg [data-i]:hover .lhit{fill:rgba(169,193,255,.12)}
+#lTitle sup{font-size:.5em;vertical-align:.85em;margin-left:2px;font-weight:600}
+#lTitle sub{font-size:.55em;vertical-align:-.15em;font-weight:600}
+#lRes{gap:6px}
+#lRes .chip{min-width:46px;text-align:center}
+#lRes button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.lpre{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.lpre h3{margin:0 0 6px;font:500 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lpre .tex button{min-width:0}
+.lpre .tex button b{font:500 13px var(--f-mono)}
+.lpre .tex button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel)}
+.lpre sub,.lpre sup,.readout sub,.readout sup,.lstep sub,.lstep sup,.lnote sub,.lnote sup{font-size:.75em;line-height:0}
+.lnote{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.55}
+.lnote:empty{display:none}
+.lnote b{color:var(--fg);font-weight:500}
+.lstep{font-size:12.5px;line-height:1.6;margin:10px 0 0;min-height:4.8em}
+.lstep b{font-weight:600}
+.readout dd .warn{color:var(--nucleus)}
+.readout dd .lel{font-family:var(--f-body);font-weight:600}
+.readout dd .ok{color:#8FD6A8}
+@media (max-width:760px){
+  #lViewer{height:62svh;min-height:360px}
+  #lApp .qtitle{max-width:calc(100vw - 200px)}
+}
 </style>
 
 <header class="site">
@@ -767,6 +806,79 @@ body.side-off .app > .panel{display:none}
 
     <p class="note"><b>How it works.</b> The sample sits in a sealed steel “bomb” filled with excess O<sub>2</sub> at about 30 atm. A current through the fuse wire ignites it, and the heat passes through the bomb wall into the stirred water. The volume is fixed, so no P–V work is done and the heat released is <b>q<sub>v</sub> = ΔU</b>. The calorimeter is insulated, so <b>q<sub>rxn</sub> = −C<sub>cal</sub>·ΔT</b>, where C<sub>cal</sub> covers the water and the bomb together. Convert to enthalpy with <b>ΔH = ΔU + Δn<sub>gas</sub>RT</b>. With <b>Heat loss to room</b> on, the trace drifts back toward 25 °C and the peak ΔT underestimates the heat; real experiments correct for this by extrapolating the drift lines back to the ignition time.</p>
     <p class="note"><b>Data.</b> Standard enthalpies of combustion at 298 K with H<sub>2</sub>O(l) as product (NIST Chemistry WebBook, CRC Handbook). The heat from the fuse wire and from nitric-acid formation is ignored.</p>
+  </aside>
+</div>
+
+<div class="app" id="lApp" hidden>
+  <main class="viewer" id="lViewer">
+    <svg class="lsvg" id="lSvg" role="img" aria-label="Lewis structure"></svg>
+    <div class="ttip" id="lTip" hidden></div>
+    <div class="hud hud-tl">
+      <div class="qtitle"><div class="qname" id="lTitle"></div><div class="qtuple" id="lSub"></div></div>
+    </div>
+    <div class="hud hud-tr" id="lRes" hidden>
+      <button class="hbtn" id="lPrev" type="button" aria-label="Previous resonance structure" hidden>‹</button>
+      <span class="chip" id="lIdx" hidden></span>
+      <button class="hbtn" id="lNext" type="button" aria-label="Next resonance structure" hidden>›</button>
+      <button class="hbtn" id="lAll" type="button" aria-pressed="true" title="Show every resonance structure side by side">All forms</button>
+    </div>
+    <div class="hud hud-bl"><div class="chip" id="lHelp">Hover an atom for its electron count</div></div>
+  </main>
+
+  <aside class="panel">
+    <header class="brand">
+      <h1>Lewis Structure Viewer</h1>
+      <p>Valence electrons → bonds and lone pairs → formal charges, resonance and VSEPR shape</p>
+    </header>
+
+    <section aria-label="Molecule or ion">
+      <h2 class="sec-h">Molecule or ion</h2>
+      <form class="qquick" id="lForm" autocomplete="off">
+        <input id="lIn" type="text" spellcheck="false" aria-label="Formula" placeholder="e.g. SO4^2-, NH4+, C2H4">
+        <button type="submit">Draw</button>
+      </form>
+      <div class="qhint" id="lHint" role="alert"></div>
+      <p class="lnote" id="lNote"></p>
+      <div class="lpre" id="lPresets"></div>
+    </section>
+
+    <section aria-label="Step by step">
+      <h2 class="sec-h">Step by step</h2>
+      <div class="seg four" role="radiogroup" aria-label="Step" id="lSteps">
+        <button type="button" role="radio" data-s="1">1 Skeleton</button>
+        <button type="button" role="radio" data-s="2">2 Outer</button>
+        <button type="button" role="radio" data-s="3">3 Central</button>
+        <button type="button" role="radio" data-s="4">4 Final</button>
+      </div>
+      <p class="lstep" id="lStepTxt"></p>
+    </section>
+
+    <section aria-label="Electron bookkeeping">
+      <h2 class="sec-h">Electron bookkeeping</h2>
+      <dl class="readout" id="lCount"></dl>
+    </section>
+
+    <section aria-label="Shape">
+      <h2 class="sec-h">Shape (VSEPR)</h2>
+      <dl class="readout" id="lShape"></dl>
+    </section>
+
+    <section aria-label="Display" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0">Display</h2>
+      <div class="seg" role="radiogroup" aria-label="Bond style" id="lStyle">
+        <button type="button" role="radio" data-s="lines">Bond lines</button>
+        <button type="button" role="radio" data-s="dots">Electron dots</button>
+      </div>
+      <div class="toggles">
+        <label class="sw" title="Let period-3+ atoms (S, P, Cl, Xe…) take more than 8 electrons when that lowers the formal charges"><input type="checkbox" id="lExp">Expanded octets</label>
+        <label class="sw"><input type="checkbox" id="lFc">Formal charges</label>
+        <label class="sw"><input type="checkbox" id="lBr">Ion brackets</label>
+        <label class="sw"><input type="checkbox" id="lCol">Colour atoms</label>
+      </div>
+    </section>
+
+    <p class="note"><b>How it works.</b> The formula gives the skeleton: the least electronegative atom goes in the middle, H and halogens sit on the outside, and in oxoacids H bonds to O. Every combination of single, double and triple bonds is then tried. Lone pairs go first to the outer atoms, then to the central atom. The structure kept is the one where every atom has an octet (H: 2, B: 6), with the smallest formal charges, and any negative charge on the most electronegative atom. When several placements tie, they are the resonance structures.</p>
+    <p class="note"><b>Formal charge</b> = valence electrons − lone-pair electrons − ½ bonding electrons. <b>Expanded octets</b> are a bookkeeping choice: for ions like SO<sub>4</sub><sup>2−</sup> some textbooks keep the octet and accept +2 on S, while others add S=O bonds to cancel it. Real bonding in these ions is closer to the octet picture, so the toggle starts off. Lewis structures also can't show that O<sub>2</sub> has two unpaired electrons.</p>
   </aside>
 </div>
 
@@ -2715,6 +2827,782 @@ window.initCalorimeter = function () {
 };
 })();
 </script>
+<script id="lewisCore">
+/* ===== Lewis-structure core (no DOM) ===== */
+window.LewisCore = (function () {
+  // symbol: [valence electrons, Pauling electronegativity, period, usual number of bonds]
+  const EL = {
+    H: [1, 2.20, 1, 1], He: [2, 4.6, 1, 0],
+    Be: [2, 1.57, 2, 2], B: [3, 2.04, 2, 3], C: [4, 2.55, 2, 4], N: [5, 3.04, 2, 3], O: [6, 3.44, 2, 2], F: [7, 3.98, 2, 1], Ne: [8, 4.5, 2, 0],
+    Al: [3, 1.61, 3, 3], Si: [4, 1.90, 3, 4], P: [5, 2.19, 3, 3], S: [6, 2.58, 3, 2], Cl: [7, 3.16, 3, 1], Ar: [8, 4.5, 3, 0],
+    Ge: [4, 2.01, 4, 4], As: [5, 2.18, 4, 3], Se: [6, 2.55, 4, 2], Br: [7, 2.96, 4, 1], Kr: [8, 3.00, 4, 0],
+    Sn: [4, 1.96, 5, 4], Sb: [5, 2.05, 5, 3], Te: [6, 2.10, 5, 2], I: [7, 2.66, 5, 1], Xe: [8, 2.60, 5, 0]
+  };
+  const METALS = new Set('Li Na K Rb Cs Fr Mg Ca Sr Ba Ra Sc Ti V Cr Mn Fe Co Ni Cu Zn Y Zr Nb Mo Tc Ru Rh Pd Ag Cd Hf Ta W Re Os Ir Pt Au Hg Ga In Tl Pb Bi Po La Ce Pr Nd U'.split(' '));
+  const val = e => EL[e][0], en = e => EL[e][1], per = e => EL[e][2], usual = e => EL[e][3];
+  const target = e => (e === 'H' || e === 'He') ? 2 : e === 'Be' ? 4 : (e === 'B' || e === 'Al') ? 6 : 8;
+  const cap = e => (e === 'H' || e === 'He') ? 2 : per(e) === 2 ? 8 : 14;
+  const maxDeg = e => e === 'H' ? 1 : per(e) === 2 ? 4 : 7;
+
+  /* ---------- formula → {body, counts, charge} ---------- */
+  const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹', SUB = '₀₁₂₃₄₅₆₇₈₉';
+  function parse(raw) {
+    let s = String(raw || '').trim().replace(/[−–]/g, '-');
+    s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+$/, m => '^' + [...m].map(c => c === '⁺' ? '+' : c === '⁻' ? '-' : SUP.indexOf(c)).join(''));
+    s = s.replace(/[₀-₉]/g, c => SUB.indexOf(c));
+    if (!s) throw new Error('Type a formula, e.g. NH3, CO3^2- or NH4+.');
+    let body = s, cs = '', m;
+    if ((m = s.match(/^(.*?)\s*\^\s*\(?\s*(\d*[+-]|[+-]\d*)\s*\)?$/))) [, body, cs] = m;
+    else if ((m = s.match(/^(.*?)\s*[[(]\s*(\d*[+-]|[+-]\d*)\s*[\])]$/))) [, body, cs] = m;
+    else if ((m = s.match(/^(\S+)\s+(\d*[+-]|[+-]\d*)$/))) [, body, cs] = m;
+    else if ((m = s.match(/^(.*?[A-Za-z0-9)])([+-]+)$/))) [, body, cs] = m;
+    let charge = 0;
+    if (cs) {
+      const d = cs.replace(/[+-]/g, ''), signs = cs.match(/[+-]/g).length;
+      charge = (cs.includes('-') ? -1 : 1) * (d ? +d : signs);
+    }
+    body = body.replace(/\s+/g, '');
+    if (!body) throw new Error('Type a formula, e.g. NH3, CO3^2- or NH4+.');
+    if (/^[a-z0-9()]+$/.test(body)) throw new Error('Element symbols start with a capital letter, e.g. NH3, not nh3.');
+    const seq = (str) => {
+      const out = []; let i = 0;
+      while (i < str.length) {
+        const c = str[i];
+        let j, items;
+        if (c === '(') {
+          let d = 1; j = i + 1;
+          while (j < str.length && d) { if (str[j] === '(') d++; else if (str[j] === ')') d--; j++; }
+          if (d) throw new Error('Unbalanced parentheses in the formula.');
+          items = seq(str.slice(i + 1, j - 1));
+        } else if (/[A-Z]/.test(c)) {
+          j = i + 1; if (/[a-z]/.test(str[j] || '')) j++;
+          items = [[str.slice(i, j), 1]];
+        } else throw new Error(`Can't read “${c}” in the formula.`);
+        let k = j; while (/\d/.test(str[k] || '')) k++;
+        const n = k > j ? +str.slice(j, k) : 1;
+        if (!n) throw new Error('An element count of 0 makes no sense here.');
+        for (const [e, x] of items) out.push([e, x * n]);
+        i = k;
+      }
+      return out;
+    };
+    const counts = new Map();
+    for (const [e, n] of seq(body)) {
+      if (METALS.has(e)) throw new Error(`${e} is a metal. This viewer draws covalent molecules and polyatomic ions; a compound of ${e} is mostly ionic.`);
+      if (!EL[e]) throw new Error(`“${e}” isn't an element this viewer knows (main-group nonmetals, B, Be, Al and the noble gases).`);
+      counts.set(e, (counts.get(e) || 0) + n);
+    }
+    return {body, counts, charge};
+  }
+
+  /* ---------- skeleton from a molecular formula ---------- */
+  function skeleton(counts, charge) {
+    const atoms = [];
+    for (const [e, n] of counts) for (let k = 0; k < n; k++) atoms.push(e);
+    if (atoms.length > 32) throw new Error('That is too big for a hand-drawn Lewis structure (32 atoms max).');
+    const n = atoms.length, deg = new Array(n).fill(0), edges = [];
+    const link = (a, b) => { edges.push([a, b]); deg[a]++; deg[b]++; };
+    const heavy = [], hs = [];
+    atoms.forEach((e, i) => (e === 'H' ? hs : heavy).push(i));
+    if (heavy.length > 14) throw new Error('Too many non-hydrogen atoms (14 max).');
+    let note = '';
+    if (!heavy.length) {
+      if (n === 2) link(0, 1);
+      else if (n > 2) throw new Error('Hydrogen alone only makes H₂ (or a lone H atom or ion).');
+    } else if (heavy.length > 1) {
+      // central element: least electronegative, skipping halogen-like elements that appear more than once (Cl₂O → O in the middle)
+      const els = [...new Set(heavy.map(i => atoms[i]))].sort((a, b) => en(a) - en(b));
+      const cen = els.find(e => !(counts.get(e) > 1 && usual(e) <= 1)) || els[0];
+      const core = heavy.filter(i => atoms[i] === cen), rest = heavy.filter(i => atoms[i] !== cen);
+      for (let k = 1; k < core.length; k++) link(core[k - 1], core[k]);
+      const room = i => usual(atoms[i]) - deg[i];
+      for (const r of rest) {
+        let best = core[0];
+        for (const c of core) if (room(c) >= room(best)) best = c;
+        link(best, r);
+      }
+      note = core.length === 1 && rest.length
+        ? `${cen} goes in the middle: it is the least electronegative${counts.get('H') ? ' (H is always on the outside)' : ''}.`
+        : core.length > 1 && rest.length ? `The ${cen} atoms form the backbone; the other atoms hang off it.` : `The ${cen} atoms are joined in a chain.`;
+    }
+    // hydrogens: onto the atom with the most free "usual" valence; ties go to O, then to the less electronegative atom
+    for (const h of hs) {
+      if (!heavy.length) break;
+      let best = -1, bestKey = null;
+      for (const i of heavy) {
+        const key = [usual(atoms[i]) - deg[i], atoms[i] === 'O' ? 1 : 0, -en(atoms[i])];
+        if (!bestKey || key[0] > bestKey[0] || (key[0] === bestKey[0] && (key[1] > bestKey[1] || (key[1] === bestKey[1] && key[2] > bestKey[2])))) { best = i; bestKey = key; }
+      }
+      if (bestKey[0] <= 0) { // no usual valence left (NH₄⁺, H₃O⁺, BH₄⁻): any atom that can take another bond
+        best = heavy.filter(i => deg[i] < maxDeg(atoms[i])).sort((a, b) => deg[b] - deg[a] || en(atoms[a]) - en(atoms[b]))[0];
+        if (best == null) throw new Error('There are more hydrogens than the other atoms can bond to.');
+      }
+      link(best, h);
+    }
+    for (let i = 0; i < n; i++) if (2 * deg[i] > cap(atoms[i])) throw new Error(`${atoms[i]} can't form ${deg[i]} bonds — check the formula.`);
+    return {atoms, edges, charge, note};
+  }
+
+  /* ---------- explicit skeletons for molecules the formula rule gets wrong ---------- */
+  const hexXY = (() => {
+    const p = [];
+    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 3; p.push([Math.cos(a), Math.sin(a)]); }
+    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 3; p.push([1.95 * Math.cos(a), 1.95 * Math.sin(a)]); }
+    return p;
+  })();
+  const SPECIAL = {
+    C6H6: {name: 'benzene', atoms: 'C C C C C C H H H H H H', bonds: '0-1 1-2 2-3 3-4 4-5 5-0 0-6 1-7 2-8 3-9 4-10 5-11', xy: hexXY},
+    CH3COOH: {name: 'acetic acid', atoms: 'C C O O H H H H', bonds: '0-1 1-2 1-3 3-7 0-4 0-5 0-6'},
+    HCOOH: {name: 'formic acid', atoms: 'C O O H H', bonds: '0-1 0-2 2-4 0-3'},
+    CH3CN: {name: 'acetonitrile', atoms: 'C C N H H H', bonds: '0-1 1-2 0-3 0-4 0-5'},
+    CH3CHO: {name: 'acetaldehyde', atoms: 'C C O H H H H', bonds: '0-1 1-2 0-3 0-4 0-5 1-6'},
+    CH3COCH3: {name: 'acetone', atoms: 'C C C O H H H H H H', bonds: '0-1 1-2 1-3 0-4 0-5 0-6 2-7 2-8 2-9'},
+    CH3OCH3: {name: 'dimethyl ether', atoms: 'C O C H H H H H H', bonds: '0-1 1-2 0-3 0-4 0-5 2-6 2-7 2-8'},
+    NH2CONH2: {name: 'urea', atoms: 'C O N N H H H H', bonds: '0-1 0-2 0-3 2-4 2-5 3-6 3-7'},
+    'S2O3': {name: 'thiosulfate', atoms: 'S S O O O', bonds: '0-1 0-2 0-3 0-4'},
+    'H3PO3': {name: 'phosphorous acid', atoms: 'P O O O H H H', bonds: '0-1 0-2 0-3 0-4 2-5 3-6'}
+  };
+
+  function molecule(raw) {
+    const p = parse(raw);
+    const sp = SPECIAL[p.body];
+    let mol;
+    if (sp) {
+      const atoms = sp.atoms.split(' ');
+      const edges = sp.bonds.split(' ').map(b => b.split('-').map(Number));
+      mol = {atoms, edges, charge: p.charge, xy: sp.xy, name: sp.name, note: ''};
+    } else mol = skeleton(p.counts, p.charge);
+    mol.body = p.body; mol.counts = p.counts;
+    return mol;
+  }
+
+  /* ---------- electron bookkeeping ---------- */
+  function setup(mol) {
+    const {atoms, edges, charge} = mol, n = atoms.length;
+    const N = atoms.reduce((s, e) => s + val(e), 0) - charge;
+    if (N < 0) throw new Error('That charge removes more electrons than the atoms have.');
+    const deg = new Array(n).fill(0), adj = atoms.map(() => []);
+    edges.forEach(([a, b], k) => { deg[a]++; deg[b]++; adj[a].push([b, k]); adj[b].push([a, k]); });
+    if (2 * edges.length > N) throw new Error(`Only ${N} valence electrons — not enough for ${edges.length} bonds.`);
+    // lone-pair fill order: outer atoms first, most electronegative first
+    const fill = atoms.map((_, i) => i).filter(i => atoms[i] !== 'H').sort((a, b) => (deg[a] > 1) - (deg[b] > 1) || en(atoms[b]) - en(atoms[a]));
+    // leftovers: most-bonded first, then least electronegative
+    const extra = atoms.map((_, i) => i).filter(i => atoms[i] !== 'H').sort((a, b) => deg[b] - deg[a] || en(atoms[a]) - en(atoms[b]));
+    return {N, deg, adj, fill, extra};
+  }
+
+  function placeLone(mol, ctx, b) {
+    const {atoms} = mol, lone = new Array(atoms.length).fill(0);
+    // b = bonding electrons around each atom; every bond is counted at both ends, so Σb/2 = electrons in bonds
+    let L = ctx.N - b.reduce((s, x) => s + x, 0) / 2;
+    if (L < 0) return null;
+    for (const i of ctx.fill) {
+      const need = Math.max(0, target(atoms[i]) - b[i]);
+      const g = Math.min(need, L - (L % 2));
+      lone[i] += g; L -= g;
+    }
+    for (const i of ctx.extra) {
+      if (L < 2) break;
+      const room = cap(atoms[i]) - b[i] - lone[i];
+      const g = Math.min(room - (room % 2), L - (L % 2));
+      if (g > 0) { lone[i] += g; L -= g; }
+    }
+    if (L === 1) for (const i of ctx.extra) if (cap(atoms[i]) - b[i] - lone[i] >= 1) { lone[i]++; L--; break; }
+    return L ? null : lone;
+  }
+
+  function score(mol, ord, lone, b, expand) {
+    const {atoms} = mol;
+    let def = 0, exp = 0, abs = 0, ens = 0;
+    const fc = atoms.map((e, i) => {
+      const tot = b[i] + lone[i];
+      def += Math.max(0, target(e) - tot);
+      if (e !== 'H') exp += Math.max(0, tot - 8);
+      const f = val(e) - lone[i] - b[i] / 2;
+      abs += Math.abs(f); ens += f * en(e);
+      return f;
+    });
+    return {ord: ord.slice(), lone, fc, key: expand ? [def, abs, exp] : [def, exp, abs], ens};
+  }
+
+  function solve(mol, expand) {
+    const {atoms, edges} = mol, n = atoms.length;
+    const ctx = setup(mol);
+    if (!edges.length) { // a single atom or ion: Lewis dot symbol
+      if (n !== 1) throw new Error('These atoms are not connected.');
+      if (ctx.N > cap(atoms[0])) throw new Error(`${atoms[0]} can't hold ${ctx.N} valence electrons.`);
+      const f = score(mol, [], [ctx.N], [0], expand);
+      return {N: ctx.N, ctx, forms: [f], res: [f], major: [true]};
+    }
+    const maxOrd = edges.map(([a, c]) => {
+      const ea = atoms[a], ec = atoms[c];
+      if (ea === 'H' || ec === 'H' || ea === 'F' || ec === 'F') return 1;
+      if ((usual(ea) === 1 && ctx.deg[a] === 1) || (usual(ec) === 1 && ctx.deg[c] === 1)) return 1;
+      return 3;
+    });
+    const ord = edges.map(() => 1), bs = ctx.deg.slice();
+    const forms = [];
+    let visits = 0;
+    (function dfs(k, used) {
+      if (visits > 400000) return;
+      if (k === edges.length) {
+        visits++;
+        const b = bs.map(x => 2 * x);
+        const lone = placeLone(mol, ctx, b);
+        if (lone) forms.push(score(mol, ord, lone, b, expand));
+        return;
+      }
+      const [a, c] = edges[k];
+      let o = 1;
+      dfs(k + 1, used);
+      while (o < maxOrd[k] && 2 * (bs[a] + 1) <= cap(atoms[a]) && 2 * (bs[c] + 1) <= cap(atoms[c]) && 2 * (used + 1) <= ctx.N) {
+        o++; bs[a]++; bs[c]++; used++; ord[k] = o;
+        dfs(k + 1, used);
+      }
+      bs[a] -= o - 1; bs[c] -= o - 1; ord[k] = 1;
+    })(0, edges.length);
+    if (!forms.length) throw new Error("Couldn't place the electrons in a sensible Lewis structure — try a preset.");
+    const cmp = (x, y) => { for (let i = 0; i < 3; i++) if (x.key[i] !== y.key[i]) return x.key[i] - y.key[i]; return x.ens - y.ens; };
+    forms.sort(cmp);
+    const best = forms[0].key;
+    const res = forms.filter(f => f.key.every((v, i) => v === best[i])).slice(0, 12);
+    const minE = res[0].ens;
+    return {N: ctx.N, ctx, forms, res, major: res.map(f => f.ens <= minE + 1e-6)};
+  }
+
+  /* ---------- the textbook procedure, for the step-by-step view ---------- */
+  function steps(mol, sol) {
+    const {atoms, edges} = mol, {ctx} = sol;
+    const ord = edges.map(() => 1), b = ctx.deg.map(d => 2 * d);
+    let L = sol.N - 2 * edges.length;
+    const after1 = L;
+    const lone2 = new Array(atoms.length).fill(0);
+    for (const i of ctx.fill) {
+      if (ctx.deg[i] > 1) continue;
+      const g = Math.min(Math.max(0, target(atoms[i]) - b[i]), L - (L % 2));
+      lone2[i] += g; L -= g;
+    }
+    const after2 = L, lone3 = lone2.slice();
+    for (const i of ctx.fill) {   // inner atoms up to an octet, most electronegative first
+      if (ctx.deg[i] < 2) continue;
+      const g = Math.min(Math.max(0, target(atoms[i]) - b[i] - lone3[i]), L - (L % 2));
+      lone3[i] += g; L -= g;
+    }
+    for (const i of ctx.extra) {   // anything left: onto atoms that can expand
+      if (ctx.deg[i] < 2 || L < 2) continue;
+      const room = cap(atoms[i]) - b[i] - lone3[i];
+      const g = Math.min(room - (room % 2), L - (L % 2));
+      if (g > 0) { lone3[i] += g; L -= g; }
+    }
+    if (L % 2) for (const i of ctx.extra) if (ctx.deg[i] >= 2 && cap(atoms[i]) - b[i] - lone3[i] >= 1) { lone3[i]++; L--; break; }
+    const short = atoms.map((e, i) => ({e, i, tot: b[i] + lone3[i]})).filter(x => x.tot < target(x.e));
+    return {
+      s1: {ord, lone: atoms.map(() => 0)}, s2: {ord, lone: lone2}, s3: {ord, lone: lone3},
+      E: edges.length, after1, after2, left3: L, short
+    };
+  }
+
+  /* ---------- VSEPR ---------- */
+  const SHAPE = {
+    '2,0': ['linear', 'linear', '180°', 'sp'],
+    '3,0': ['trigonal planar', 'trigonal planar', '120°', 'sp²'], '2,1': ['trigonal planar', 'bent', '< 120°', 'sp²'],
+    '4,0': ['tetrahedral', 'tetrahedral', '109.5°', 'sp³'], '3,1': ['tetrahedral', 'trigonal pyramidal', '≈ 107°', 'sp³'], '2,2': ['tetrahedral', 'bent', '≈ 104.5°', 'sp³'],
+    '5,0': ['trigonal bipyramidal', 'trigonal bipyramidal', '90°, 120°', 'sp³d'], '4,1': ['trigonal bipyramidal', 'seesaw', '< 90°, < 120°', 'sp³d'],
+    '3,2': ['trigonal bipyramidal', 'T-shaped', '< 90°', 'sp³d'], '2,3': ['trigonal bipyramidal', 'linear', '180°', 'sp³d'],
+    '6,0': ['octahedral', 'octahedral', '90°', 'sp³d²'], '5,1': ['octahedral', 'square pyramidal', '< 90°', 'sp³d²'], '4,2': ['octahedral', 'square planar', '90°', 'sp³d²'],
+    '7,0': ['pentagonal bipyramidal', 'pentagonal bipyramidal', '72°, 90°', 'sp³d³'], '6,1': ['pentagonal bipyramidal', 'distorted octahedral', '—', 'sp³d³']
+  };
+  const groupsOf = l => Math.floor(l / 2) + (l % 2);
+  function vsepr(mol, sol, form) {
+    const out = [];
+    mol.atoms.forEach((e, i) => {
+      const X = sol.ctx.deg[i];
+      if (X < 2) return;
+      const E = groupsOf(form.lone[i]);
+      out.push({i, e, X, E, sh: SHAPE[X + ',' + E] || null});
+    });
+    return out;
+  }
+
+  /* ---------- 2-D layout (bond length 1) ---------- */
+  function layout(mol, sol, form) {
+    const {atoms} = mol, n = atoms.length, {adj, deg} = sol.ctx;
+    if (mol.xy) return mol.xy.map(p => p.slice());
+    const P = new Array(n);
+    if (n === 1) { P[0] = [0, 0]; return P; }
+    const TAU = Math.PI * 2;
+    const heavyN = i => adj[i].filter(([j]) => atoms[j] !== 'H').length;
+    let root = 0;
+    for (let i = 1; i < n; i++) {
+      const k = (x) => [deg[x], atoms[x] !== 'H' ? 1 : 0, heavyN(x), -en(atoms[x])];
+      const a = k(i), r = k(root);
+      for (let t = 0; t < 4; t++) { if (a[t] !== r[t]) { if (a[t] > r[t]) root = i; break; } }
+    }
+    // subtree sizes
+    const parent = new Array(n).fill(-1), order = [root], seen = new Set([root]);
+    for (let q = 0; q < order.length; q++) for (const [j] of adj[order[q]]) if (!seen.has(j)) { seen.add(j); parent[j] = order[q]; order.push(j); }
+    const size = new Array(n).fill(1);
+    for (let q = order.length - 1; q > 0; q--) size[parent[order[q]]] += size[order[q]];
+    const kidsOf = i => adj[i].map(([j]) => j).filter(j => parent[j] === i)
+      .sort((a, b) => (atoms[b] !== 'H') - (atoms[a] !== 'H') || size[b] - size[a]);
+    const ad = (x, y) => { const d = Math.abs(((x - y) % TAU + TAU) % TAU); return Math.min(d, TAU - d); };
+    const put = (i, a, from) => { P[i] = [P[from][0] + Math.cos(a), P[from][1] + Math.sin(a)]; };
+
+    P[root] = [0, 0];
+    {
+      const kids = kidsOf(root), k = kids.length, g = groupsOf(form.lone[root]);
+      let angles;
+      if (k + g > 4 && k <= 4) {
+        angles = [[0], [0, Math.PI], [Math.PI, 0, Math.PI / 2], [0, Math.PI, -Math.PI / 2, Math.PI / 2]][k - 1];
+      } else {
+        const nd = Math.max(k + g, k), step = TAU / nd;
+        const idx = []; for (let t = 0; t < k; t++) idx.push(Math.round(t * nd / k));
+        const lp = []; for (let j = 0; j < nd; j++) if (!idx.includes(j)) lp.push(j);
+        const rot = lp.length ? -Math.PI / 2 - lp[0] * step : (nd % 2 ? -Math.PI / 2 : 0);
+        const slots = idx.map(j => rot + j * step);
+        angles = [slots.shift()];   // spread: each next slot as far as possible from the ones taken
+        while (slots.length) {
+          let bi = 0, bv = -1;
+          slots.forEach((s, t) => { const v = Math.min(...angles.map(a => ad(a, s))); if (v > bv + 1e-9) { bv = v; bi = t; } });
+          angles.push(slots.splice(bi, 1)[0]);
+        }
+      }
+      kids.forEach((c, t) => put(c, angles[t], root));
+    }
+    for (let q = 1; q < order.length; q++) {
+      const c = order[q], kids = kidsOf(c), k = kids.length;
+      if (!k) continue;
+      const back = Math.atan2(P[parent[c]][1] - P[c][1], P[parent[c]][0] - P[c][0]);
+      const nd = Math.min(k + 1 + groupsOf(form.lone[c]), 6), step = TAU / Math.max(nd, k + 1);
+      const m = Math.max(nd, k + 1) - 1;
+      const slots = [];
+      for (let t = 0; t < k; t++) slots.push(back + (1 + Math.round((t + 0.5) * m / k - 0.5)) * step);
+      slots.sort((x, y) => ad(x, back + Math.PI) - ad(y, back + Math.PI));
+      kids.forEach((j, t) => put(j, slots[t], c));
+    }
+    return P;
+  }
+
+  return {EL, val, en, per, target, cap, parse, molecule, solve, steps, vsepr, layout, SHAPE, groupsOf, SPECIAL};
+})();
+</script>
+<script>
+/* ---------- Lewis-structure page ---------- */
+(function () {
+const C = window.LewisCore;
+const $ = s => document.querySelector(s);
+const KEY = 'aov.lewis';
+const S = {f: 'NO3-', exp: false, style: 'lines', fc: true, br: true, col: true, step: 4, all: true, idx: 0};
+const PRESETS = [
+  ['Octet rule', [['H2O', 'water'], ['NH3', 'ammonia'], ['CH4', 'methane'], ['HCN', 'hydrogen cyanide'], ['CO2', 'carbon dioxide'], ['N2', 'nitrogen'], ['CH2O', 'formaldehyde'], ['H2O2', 'hydrogen peroxide']]],
+  ['Ions', [['NH4+', 'ammonium'], ['H3O+', 'hydronium'], ['OH-', 'hydroxide'], ['CN-', 'cyanide'], ['BF4-', 'tetrafluoroborate'], ['ClO-', 'hypochlorite']]],
+  ['Resonance', [['O3', 'ozone'], ['NO3-', 'nitrate'], ['CO3^2-', 'carbonate'], ['NO2-', 'nitrite'], ['SO2', 'sulfur dioxide'], ['OCN-', 'cyanate'], ['N2O', 'nitrous oxide'], ['C6H6', 'benzene']]],
+  ['Expanded octet', [['SO4^2-', 'sulfate'], ['PO4^3-', 'phosphate'], ['PCl5', 'phosphorus pentachloride'], ['SF6', 'sulfur hexafluoride'], ['SF4', 'sulfur tetrafluoride'], ['ClF3', 'chlorine trifluoride'], ['XeF4', 'xenon tetrafluoride'], ['I3-', 'triiodide']]],
+  ['Odd & short', [['BF3', 'boron trifluoride'], ['BeCl2', 'beryllium chloride'], ['NO', 'nitric oxide'], ['NO2', 'nitrogen dioxide'], ['ClO2', 'chlorine dioxide']]],
+  ['Organic', [['C2H4', 'ethylene'], ['C2H2', 'acetylene'], ['CH3OH', 'methanol'], ['C2H5OH', 'ethanol'], ['HCOOH', 'formic acid'], ['CH3COOH', 'acetic acid'], ['CH3NH2', 'methylamine'], ['CH3CN', 'acetonitrile']]]
+];
+const NAMES = new Map(PRESETS.flatMap(g => g[1]).map(([f, n]) => [f, n]));
+const COL = {H: '#C9CFDA', C: '#E3E6EB', N: '#8FB4FF', O: '#FF8A80', F: '#9BE39B', Cl: '#9BE39B', Br: '#E0A07A', I: '#C79CFF', S: '#F2D46D', Se: '#F2C46D', P: '#FFB070', As: '#FFB070', B: '#F5B7A5', Be: '#C8E88A', Al: '#C0C8D8', Si: '#D8C4A0', Ge: '#D8C4A0', Xe: '#7FD8E0', Kr: '#7FD8E0', Ne: '#7FD8E0', Ar: '#7FD8E0', He: '#7FD8E0'};
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const MINUS = '−';
+const chg = q => q === 0 ? '0' : (Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : MINUS);
+const sgn = q => (q > 0 ? '+' : MINUS) + Math.abs(q);
+const pretty = (body, q) => esc(body).replace(/(\d+)/g, '<sub>$1</sub>') + (q ? `<sup>${chg(q)}</sup>` : '');
+const SUBD = '₀₁₂₃₄₅₆₇₈₉';
+const subN = n => String(n).split('').map(d => SUBD[d]).join('');
+const canon = f => { try { const p = C.parse(f); return p.body + '|' + p.charge; } catch (e) { return f; } };
+const PRE_KEYS = new Map(PRESETS.flatMap(g => g[1]).map(([f]) => [canon(f), f]));
+
+let cur = null, alt = null, inited = false, hover = [];
+
+/* ---------- state ---------- */
+function load() {
+  try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+  S.step = 4; S.idx = 0;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify({f: S.f, exp: S.exp, style: S.style, fc: S.fc, br: S.br, col: S.col, all: S.all})); } catch (e) {} }
+
+function compute(f) {
+  const m = C.molecule(f), s = C.solve(m, S.exp);
+  let a = null; try { a = C.solve(m, !S.exp); } catch (e) {}
+  cur = {f, m, s, P: C.layout(m, s, s.res[0]), st: m.atoms.length > 1 ? C.steps(m, s) : null};
+  alt = a;
+  S.f = f;
+}
+function submit(f) {
+  const hint = $('#lHint'), inp = $('#lIn');
+  try {
+    compute(f);
+    hint.textContent = ''; inp.removeAttribute('aria-invalid');
+    S.idx = 0; S.step = 4; save();
+    renderAll();
+  } catch (e) {
+    hint.textContent = e.message; inp.setAttribute('aria-invalid', 'true');
+  }
+}
+
+/* ---------- geometry helpers ---------- */
+const TAU = Math.PI * 2;
+const angDiff = (x, y) => { const d = Math.abs(((x - y) % TAU + TAU) % TAU); return Math.min(d, TAU - d); };
+const ell = e => [e.length > 1 ? 0.31 : 0.2, 0.22];
+const edist = (e, a) => { const [rx, ry] = ell(e); const c = Math.cos(a) / rx, s = Math.sin(a) / ry; return 1 / Math.sqrt(c * c + s * s); };
+const nbAngles = (i) => cur.s.ctx.adj[i].map(([j]) => Math.atan2(cur.P[j][1] - cur.P[i][1], cur.P[j][0] - cur.P[i][0]));
+function greedy(occ, m, prefer) {
+  const out = [], taken = occ.slice();
+  for (let k = 0; k < m; k++) {
+    let best = 0, bv = -1, bp = 9;
+    for (let d = 0; d < 360; d += 5) {
+      const a = d * Math.PI / 180;
+      const v = taken.length ? Math.min(...taken.map(t => angDiff(t, a))) : Math.PI;
+      const p = angDiff(a, prefer);
+      if (v > bv + 1e-6 || (Math.abs(v - bv) <= 1e-6 && p < bp)) { best = a; bv = v; bp = p; }
+    }
+    out.push(best); taken.push(best);
+  }
+  return out;
+}
+// lone-electron groups for atom i: [{a: angle, n: 1|2}]
+function loneGroups(i, l) {
+  if (!l) return [];
+  const nb = nbAngles(i);
+  if (!nb.length) { // Lewis dot symbol: one electron per side before pairing
+    const sizes = [0, 0, 0, 0];
+    for (let k = 0; k < l; k++) sizes[k % 4]++;
+    return [-Math.PI / 2, 0, Math.PI / 2, Math.PI].map((a, k) => ({a, n: sizes[k]})).filter(g => g.n);
+  }
+  const sizes = []; for (let k = 0; k < Math.floor(l / 2); k++) sizes.push(2); if (l % 2) sizes.push(1);
+  const m = sizes.length;
+  let angs;
+  if (nb.length === 1) {
+    const opp = nb[0] + Math.PI, sp = TAU / (m + 1);
+    angs = sizes.map((_, j) => opp + (j - (m - 1) / 2) * sp);
+  } else angs = greedy(nb, m, -Math.PI / 2);
+  return sizes.map((n, j) => ({a: angs[j], n}));
+}
+
+/* ---------- drawing ---------- */
+function formSVG(form, fi, opt) {
+  const {m} = cur, P = cur.P, out = [];
+  const colorOf = e => S.col ? (COL[e] || '#E3E6EB') : '#E3E6EB';
+  // bonds
+  m.edges.forEach(([a, b], k) => {
+    const o = form.ord[k] || 1;
+    const dx = P[b][0] - P[a][0], dy = P[b][1] - P[a][1], len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    const ang = Math.atan2(dy, dx);
+    const ra = edist(m.atoms[a], ang) + 0.06, rb = edist(m.atoms[b], ang + Math.PI) + 0.06;
+    const hl = opt.hlBonds && o > 1 ? ' hl' : '';
+    for (let j = 0; j < o; j++) {
+      const off = (j - (o - 1) / 2) * (S.style === 'dots' ? 0.15 : 0.12);
+      const px = -uy * off, py = ux * off;
+      if (S.style === 'dots') {
+        const mx = (P[a][0] + ra * ux + P[b][0] - rb * ux) / 2 + px, my = (P[a][1] + ra * uy + P[b][1] - rb * uy) / 2 + py;
+        for (const t of [-0.065, 0.065]) out.push(`<circle class="ld${hl}" cx="${(mx + ux * t).toFixed(3)}" cy="${(my + uy * t).toFixed(3)}" r="0.042"/>`);
+      } else {
+        out.push(`<line class="lb${hl}" x1="${(P[a][0] + ux * ra + px).toFixed(3)}" y1="${(P[a][1] + uy * ra + py).toFixed(3)}" x2="${(P[b][0] - ux * rb + px).toFixed(3)}" y2="${(P[b][1] - uy * rb + py).toFixed(3)}"/>`);
+      }
+    }
+  });
+  hover[fi] = [];
+  m.atoms.forEach((e, i) => {
+    const [x, y] = P[i], g = loneGroups(i, form.lone[i]);
+    const hl = opt.hlLone && opt.hlLone(i) ? ' hl' : '';
+    let s = `<g data-f="${fi}" data-i="${i}"><ellipse class="lhit" cx="${x}" cy="${y}" rx="${ell(e)[0] + 0.12}" ry="0.34"/>`;
+    for (const gr of g) {
+      const d = edist(e, gr.a) + 0.1, cx = x + Math.cos(gr.a) * d, cy = y + Math.sin(gr.a) * d;
+      const px = -Math.sin(gr.a), py = Math.cos(gr.a);
+      const offs = gr.n === 2 ? [-0.075, 0.075] : [0];
+      for (const t of offs) s += `<circle class="ld${hl}" cx="${(cx + px * t).toFixed(3)}" cy="${(cy + py * t).toFixed(3)}" r="0.042"/>`;
+    }
+    s += `<text x="${x}" y="${y}" dy="0.155" text-anchor="middle" font-size="0.44" fill="${colorOf(e)}">${e}</text>`;
+    if (opt.fc && form.fc[i]) {
+      const occ = nbAngles(i).concat(g.map(q => q.a));
+      const [a] = greedy(occ, 1, -Math.PI / 4);
+      const d = edist(e, a) + 0.3;
+      s += `<text class="lfc" x="${(x + Math.cos(a) * d).toFixed(3)}" y="${(y + Math.sin(a) * d).toFixed(3)}" dy="0.085" text-anchor="middle" font-size="0.25">${chg(form.fc[i])}</text>`;
+    }
+    s += '</g>';
+    out.push(s);
+    const tot = 2 * form.ord.reduce((t, o, k) => t + (m.edges[k][0] === i || m.edges[k][1] === i ? o : 0), 0) + form.lone[i];
+    hover[fi][i] = {e, tot, lone: form.lone[i], fc: form.fc[i], bonds: cur.s.ctx.deg[i]};
+  });
+  return out.join('');
+}
+
+function bounds() {
+  const P = cur.P;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of P) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const pad = 0.66;
+  return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+}
+
+function draw() {
+  if (!cur) return;
+  const v = $('#lViewer'), W = v.clientWidth, H = v.clientHeight, svg = $('#lSvg');
+  if (!W || !H) return;
+  const {m, s, st} = cur;
+  let items;
+  if (S.step < 4 && st) {
+    const f = S.step === 1 ? st.s1 : S.step === 2 ? st.s2 : st.s3;
+    const deg = s.ctx.deg;
+    items = [{form: {ord: f.ord, lone: f.lone, fc: m.atoms.map(() => 0)}, opt: {fc: false, hlLone: S.step === 2 ? i => deg[i] <= 1 : S.step === 3 ? i => deg[i] > 1 : null}}];
+  } else {
+    const list = S.all ? s.res.map((f, k) => k) : [Math.min(S.idx, s.res.length - 1)];
+    items = list.map(k => ({form: s.res[k], k, opt: {fc: S.fc}}));
+  }
+  const showBr = S.br && m.charge !== 0;
+  let [bx0, by0, bx1, by1] = bounds();
+  if (showBr) { bx0 -= 0.22; bx1 += 0.62; by0 -= 0.12; by1 += 0.1; }
+  const cw = bx1 - bx0, chh = by1 - by0, gap = 1.15;
+  const mixed = items.length > 1 && s.major.some(x => !x);
+  const capH = mixed ? 0.5 : 0, rowGap = 0.5;
+  const M = {l: 24, r: 24, t: 96, b: 52};
+  const aw = Math.max(80, W - M.l - M.r), ah = Math.max(80, H - M.t - M.b);
+  const opts = [];
+  for (let c = 1; c <= items.length; c++) {
+    const r = Math.ceil(items.length / c);
+    if (c > 1 && Math.ceil(items.length / (c - 1)) === r) continue;
+    const tw = c * cw + (c - 1) * gap + (r > 1 ? gap : 0), th = r * (chh + capH) + (r - 1) * rowGap;
+    opts.push({c, r, tw, th, sc: Math.min(aw / tw, ah / th, 92)});
+  }
+  // biggest drawing wins, but prefer fewer rows when that costs less than 20 % in size
+  const top = Math.max(...opts.map(o => o.sc));
+  const best = opts.filter(o => o.sc >= top * 0.8).sort((x, y) => x.r - y.r || y.sc - x.sc)[0];
+  const sc = best.sc;
+  const parts = [];
+  hover = [];
+  items.forEach((it, n) => {
+    const col = n % best.c, row = Math.floor(n / best.c);
+    const ox = col * (cw + gap) - bx0, oy = row * (chh + capH + rowGap) - by0;
+    let g = `<g transform="translate(${ox.toFixed(3)} ${oy.toFixed(3)})">` + formSVG(it.form, n, it.opt);
+    if (showBr) {
+      const L = bx0 + 0.1, R = bx1 - 0.5, T = by0 + 0.08, B = by1 - 0.06, t = 0.13;
+      g += `<path class="lbr" d="M${L + t} ${T}H${L}V${B}H${L + t}M${R - t} ${T}H${R}V${B}H${R - t}"/>`;
+      g += `<text class="lbrq" x="${R + 0.06}" y="${T + 0.2}" font-size="0.3">${chg(m.charge)}</text>`;
+    }
+    if (mixed) g += `<text class="lcap${s.major[it.k] ? ' maj' : ''}" x="${((bx0 + bx1) / 2).toFixed(3)}" y="${(by1 + 0.32).toFixed(3)}" text-anchor="middle" font-size="0.24">${s.major[it.k] ? 'major' : 'minor'}</text>`;
+    g += '</g>';
+    parts.push(g);
+    const last = n === items.length - 1;
+    if (!last) {
+      const ax = col * (cw + gap) + cw + gap / 2, ay = row * (chh + capH + rowGap) + chh / 2, h = 0.3;
+      parts.push(`<path class="lar" d="M${ax - h} ${ay}H${ax + h}M${ax - h + 0.1} ${ay - 0.08}L${ax - h} ${ay}L${ax - h + 0.1} ${ay + 0.08}M${ax + h - 0.1} ${ay - 0.08}L${ax + h} ${ay}L${ax + h - 0.1} ${ay + 0.08}"/>`);
+    }
+  });
+  const leftPx = M.l + (aw - best.tw * sc) / 2, topPx = M.t + (ah - best.th * sc) / 2;
+  svg.setAttribute('viewBox', `${(-leftPx / sc).toFixed(4)} ${(-topPx / sc).toFixed(4)} ${(W / sc).toFixed(4)} ${(H / sc).toFixed(4)}`);
+  svg.innerHTML = parts.join('');
+  svg.setAttribute('aria-label', `Lewis structure of ${m.body}${items.length > 1 ? `, ${items.length} resonance structures` : ''}`);
+}
+
+/* ---------- panel ---------- */
+function renderPresets() {
+  const key = canon(S.f);
+  $('#lPresets').innerHTML = PRESETS.map(([g, list]) =>
+    `<div><h3>${esc(g)}</h3><div class="tex">` + list.map(([f, n]) => {
+      const p = C.parse(f);
+      return `<button type="button" data-f="${esc(f)}" aria-pressed="${canon(f) === key}" title="${esc(n)}"><b>${pretty(p.body, p.charge)}</b><small>${esc(n)}</small></button>`;
+    }).join('') + '</div></div>').join('');
+}
+
+function stepText() {
+  const {m, s, st} = cur, N = s.N;
+  if (!st) return `A single atom or ion. Its Lewis symbol is just the element with its <b>${N}</b> valence electron${N === 1 ? '' : 's'} as dots, one per side before any pair up.`;
+  const E = st.E, final = s.res[0];
+  const centers = m.atoms.map((e, i) => i).filter(i => s.ctx.deg[i] > 1);
+  if (S.step === 1) return `<b>Count valence electrons:</b> ${N}. Join the atoms with ${E === 1 ? 'a single bond' : E + ' single bonds'}. That uses ${2 * E} e⁻ and leaves <b>${st.after1}</b>.`;
+  if (S.step === 2) {
+    if (st.after1 === st.after2) return `<b>Complete the outer atoms.</b> Here they are all H, and each H already has its 2 e⁻ from the bond. Still <b>${st.after2}</b> e⁻ to place.`;
+    if (!centers.length) return `Both atoms are outer atoms. Fill the more electronegative one first: this uses ${st.after1 - st.after2} e⁻ and leaves <b>${st.after2}</b>.`;
+    return `<b>Complete the outer atoms</b> (8 e⁻ each, H needs only 2). That uses ${st.after1 - st.after2} e⁻ and leaves <b>${st.after2}</b>.`;
+  }
+  if (S.step === 3) {
+    let t = !centers.length ? 'There is no central atom; every electron is already placed.'
+      : st.after2 ? `<b>Put the remaining ${st.after2} e⁻ on the central atom${centers.length > 1 ? 's' : ''}.</b>` : '<b>No electrons are left</b> for the central atom.';
+    if (st.short.length) {
+      const sh = st.short.map(x => `${x.e} has ${x.tot}`);
+      t += ` ${sh.join(', ')} — short of ${st.short.length > 1 ? 'their octets' : 'an octet'}${st.short.some(x => x.e === 'B' || x.e === 'Be' || x.e === 'Al') ? '' : ', so the next step shares lone pairs as multiple bonds'}.`;
+    } else t += ' Every atom now has a full shell.';
+    if (N % 2) t += ' The electron count is odd, so one electron stays unpaired.';
+    return t;
+  }
+  const pi = final.ord.reduce((t, o) => t + o - 1, 0);
+  let t = pi ? `<b>Share ${pi === 1 ? 'one lone pair' : pi + ' lone pairs'}</b> from outer atoms as ${final.ord.some(o => o === 3) ? 'multiple' : (pi === 1 ? 'a double bond' : 'double bonds')}${S.exp && final.key[2] > 0 ? ', past the octet where that cancels formal charge' : N % 2 ? ' until every atom but one has an octet' : ' until every atom has an octet'}.`
+    : '<b>No multiple bonds are needed</b> — step 3 is already the final structure.';
+  const nz = final.fc.filter(q => q).length;
+  t += nz ? ' Then mark the formal charges.' : ' All formal charges are zero.';
+  if (s.res.length > 1) t += ` There ${s.res.length === 2 ? 'are two equally good ways' : `are ${s.res.length} equally good ways`} to do this: resonance.`;
+  return t;
+}
+
+function fcList(form) {
+  const g = new Map();
+  form.fc.forEach((q, i) => { if (q) { const k = `<span class="lel">${cur.m.atoms[i]}</span> ` + sgn(q); g.set(k, (g.get(k) || 0) + 1); } });
+  return [...g].map(([k, n]) => k + (n > 1 ? ` ×${n}` : '')).join(' · ');
+}
+
+function frac(num, den) {
+  const gcd = (a, b) => b ? gcd(b, a % b) : a, d = gcd(num, den);
+  const p = num / d, q = den / d;
+  if (q === 1) return String(p);
+  const w = Math.floor(p / q), r = p % q;
+  const F = {'1/2': '½', '1/3': '⅓', '2/3': '⅔', '1/4': '¼', '3/4': '¾', '1/5': '⅕', '2/5': '⅖', '3/5': '⅗', '4/5': '⅘', '1/6': '⅙', '5/6': '⅚'}[r + '/' + q];
+  return (w || '') + (F || (w ? ' ' : '') + r + '/' + q);
+}
+
+function renderCount() {
+  const {m, s} = cur, f = shownForm();
+  const rows = [];
+  const cnt = [...m.counts].map(([e, n]) => `<span class="lel">${e}</span> ${n > 1 ? n + '×' : ''}${C.val(e)}`).join(' + ');
+  const qq = m.charge ? (m.charge < 0 ? ` + ${-m.charge}` : ` ${MINUS} ${m.charge}`) : '';
+  rows.push(['Valence electrons', `${cnt}${qq} = ${s.N}${m.charge ? `<small>${m.charge < 0 ? 'add' : 'remove'} ${Math.abs(m.charge)} e⁻ for the ${chg(m.charge)} charge</small>` : ''}`]);
+  if (m.atoms.length > 1) {
+    const E = m.edges.length, pi = f.ord.reduce((t, o) => t + o - 1, 0);
+    const kinds = [1, 2, 3].map(o => [o, f.ord.filter(x => x === o).length]).filter(x => x[1]).map(([o, n]) => `${n} ${['single', 'double', 'triple'][o - 1]}`).join(', ');
+    rows.push(['In bonds', `${2 * (E + pi)} e⁻<small>${kinds} · σ ${E}, π ${pi}</small>`]);
+  }
+  const L = f.lone.reduce((t, x) => t + x, 0), un = f.lone.reduce((t, x) => t + (x % 2), 0);
+  rows.push(['In lone pairs', `${L} e⁻<small>${Math.floor((L - un) / 2)} pair${(L - un) / 2 === 1 ? '' : 's'}${un ? ` + ${un} unpaired electron (a radical)` : ''}</small>`]);
+  const fl = fcList(f);
+  rows.push(['Formal charges', fl ? `${fl}<small>sum = ${m.charge ? sgn(m.charge) : '0'}, the ${m.charge ? 'ion' : 'molecule'}'s charge</small>` : `all 0`]);
+  // octet status
+  const notes = new Map();
+  m.atoms.forEach((e, i) => {
+    if (m.atoms.length === 1) return;
+    const tot = hoverTot(f, i);
+    let t = null;
+    if (tot % 2) t = `<span class="warn">${e}: ${tot} e⁻ — odd electron (radical)</span>`;
+    else if (tot > 8) t = `<span class="warn">${e}: ${tot} e⁻ — expanded octet</span>`;
+    else if (tot < C.target(e) || (tot < 8 && e !== 'H' && e !== 'He')) t = `<span class="warn">${e}: ${tot} e⁻ — electron-deficient</span>`;
+    if (t) notes.set(t, (notes.get(t) || 0) + 1);
+  });
+  rows.push(['Octets', notes.size ? [...notes].map(([t, n]) => t + (n > 1 ? ` ×${n}` : '')).join('<br>') : (m.atoms.length > 1 ? '<span class="ok">every atom has an octet' + (m.atoms.includes('H') ? ' (H: 2)' : '') + '</span>' : '—')]);
+  if (s.res.length > 1) {
+    const allMaj = s.major.every(Boolean);
+    const avg = new Map();
+    m.edges.forEach(([a, b], k) => {
+      const key = [m.atoms[a], m.atoms[b]].sort((x, y) => C.en(x) - C.en(y)).join('–');
+      const sum = s.res.reduce((t, r) => t + r.ord[k], 0);
+      if (!avg.has(key)) avg.set(key, new Set());
+      avg.get(key).add(sum);
+    });
+    const bo = [...avg].filter(([, set]) => set.size === 1 && [...set][0] % s.res.length).map(([k, set]) => `${k} bond order ${frac([...set][0], s.res.length)}`);
+    rows.push(['Resonance', `${s.res.length} structures${allMaj ? ', all equivalent' : ''}<small>${allMaj ? `The real ${m.charge ? 'ion' : 'molecule'} is one blend of them${bo.length ? ': ' + bo.join(', ') : ''}.` : 'The major form puts negative charge on the more electronegative atom.'}</small>`]);
+  }
+  $('#lCount').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+function hoverTot(f, i) {
+  const {m} = cur;
+  return 2 * f.ord.reduce((t, o, k) => t + (m.edges[k][0] === i || m.edges[k][1] === i ? o : 0), 0) + f.lone[i];
+}
+const shownForm = () => (!S.all && S.step === 4) ? cur.s.res[Math.min(S.idx, cur.s.res.length - 1)] : cur.s.res[0];
+
+function renderShape() {
+  const {m, s} = cur, f = shownForm();
+  const v = C.vsepr(m, s, f);
+  let html;
+  if (m.atoms.length === 1) html = '<dt>Shape</dt><dd>a single atom</dd>';
+  else if (!v.length) html = '<dt>Shape</dt><dd>linear<small>only two atoms</small></dd>';
+  else {
+    const g = new Map();
+    for (const x of v) { const k = `${x.e}|${x.X}|${x.E}`; if (!g.has(k)) g.set(k, {x, n: 0}); g.get(k).n++; }
+    html = [...g.values()].slice(0, 6).map(({x, n}) => {
+      const sh = x.sh;
+      const axe = `AX${subN(x.X)}${x.E ? 'E' + (x.E > 1 ? subN(x.E) : '') : ''}`;
+      return `<dt>${x.e}${n > 1 ? ` ×${n}` : (v.length > 1 ? '' : ' (central)')}</dt><dd>${axe} · ${sh ? sh[1] : '—'}${sh ? ` · ${sh[2]}` : ''}<small>${sh ? `${x.X + x.E} electron domains: ${sh[0]} · ${sh[3]}` : 'no simple VSEPR shape'}</small></dd>`;
+    }).join('');
+  }
+  $('#lShape').innerHTML = html;
+}
+
+function renderNote() {
+  const {m, s} = cur;
+  const out = [];
+  if (m.note) out.push(esc(m.note));
+  if (alt) {
+    const sig = r => r.map(f => f.ord.join('')).sort().join('/');
+    if (sig(alt.res) !== sig(s.res)) {
+      const big = [...new Set(m.atoms.filter((e, i) => C.per(e) >= 3 && s.ctx.deg[i] > 1))].join(', ');
+      out.push(S.exp
+        ? `<b>Expanded octets</b> is on: ${big || 'the central atom'} takes extra bonds to cancel formal charge. Turn it off for the strict-octet structure.`
+        : `Strict octet rule. Turn on <b>Expanded octets</b> to let ${big || 'the central atom'} take more than 8 electrons and cancel formal charge.`);
+    }
+  }
+  $('#lNote').innerHTML = out.join(' ');
+}
+
+function renderHud() {
+  const {m, s} = cur;
+  $('#lTitle').innerHTML = pretty(m.body, m.charge);
+  const name = NAMES.get(PRE_KEYS.get(canon(S.f))) || m.name || '';
+  const sub = S.step < 4 && cur.st
+    ? `Step <b>${S.step}</b> of 4 · ${['', 'skeleton', 'outer atoms', 'central atom'][S.step]}`
+    : `${name ? esc(name) + ' · ' : ''}<b>${s.N}</b> valence e⁻${s.res.length > 1 ? ` · <b>${s.res.length}</b> resonance forms` : ''}`;
+  $('#lSub').innerHTML = sub;
+  const multi = s.res.length > 1 && S.step === 4;
+  $('#lRes').hidden = !multi;
+  $('#lAll').setAttribute('aria-pressed', String(S.all));
+  for (const id of ['#lPrev', '#lNext', '#lIdx']) $(id).hidden = S.all;
+  $('#lIdx').textContent = `${Math.min(S.idx, s.res.length - 1) + 1} / ${s.res.length}`;
+}
+
+function renderControls() {
+  $('#lIn').value = S.f;
+  $('#lExp').checked = S.exp; $('#lFc').checked = S.fc; $('#lBr').checked = S.br; $('#lCol').checked = S.col;
+  document.querySelectorAll('#lStyle button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.s === S.style)));
+  const single = !cur.st;
+  document.querySelectorAll('#lSteps button').forEach(b => {
+    b.setAttribute('aria-checked', String(+b.dataset.s === S.step));
+    b.disabled = single && b.dataset.s !== '4';
+  });
+  $('#lStepTxt').innerHTML = stepText();
+}
+
+function renderAll() {
+  renderPresets(); renderControls(); renderNote(); renderCount(); renderShape(); renderHud(); draw();
+}
+
+/* ---------- events ---------- */
+function bind() {
+  $('#lForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#lIn').value.trim(); submit(PRE_KEYS.get(canon(v)) || v); });
+  $('#lIn').addEventListener('input', () => { $('#lIn').removeAttribute('aria-invalid'); $('#lHint').textContent = ''; });
+  $('#lPresets').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (b) submit(b.dataset.f); });
+  $('#lSteps').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return; S.step = +b.dataset.s; renderAll(); });
+  $('#lStyle').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.style = b.dataset.s; save(); renderAll(); });
+  $('#lExp').addEventListener('change', e => { S.exp = e.target.checked; save(); try { compute(S.f); } catch (err) {} S.idx = 0; renderAll(); });
+  for (const [id, k] of [['#lFc', 'fc'], ['#lBr', 'br'], ['#lCol', 'col']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); draw(); });
+  $('#lAll').addEventListener('click', () => { S.all = !S.all; save(); renderAll(); });
+  const go = d => { const n = cur.s.res.length; S.idx = ((Math.min(S.idx, n - 1) + d) % n + n) % n; renderAll(); };
+  $('#lPrev').addEventListener('click', () => go(-1));
+  $('#lNext').addEventListener('click', () => go(1));
+  const svg = $('#lSvg'), tip = $('#lTip'), viewer = $('#lViewer');
+  svg.addEventListener('pointermove', e => {
+    const t = e.target.closest && e.target.closest('[data-i]');
+    const d = t && hover[t.dataset.f] && hover[t.dataset.f][t.dataset.i];
+    if (!d) { tip.hidden = true; return; }
+    const lp = Math.floor(d.lone / 2), un = d.lone % 2;
+    const state = d.e === 'H' || d.e === 'He' ? (d.tot === 2 ? 'duet' : '') : d.tot === 8 ? 'octet' : d.tot > 8 ? 'expanded octet' : d.tot % 2 ? 'radical' : 'electron-deficient';
+    tip.innerHTML = `<b>${d.e}</b> <span>·</span> ${d.bonds} bond${d.bonds === 1 ? '' : 's'}, ${lp} lone pair${lp === 1 ? '' : 's'}${un ? ', 1 unpaired e⁻' : ''}<br><span>electrons around</span> ${d.tot}${state ? ` <span>(${state})</span>` : ''}<br><span>formal charge</span> ${d.fc ? sgn(d.fc) : '0'}`;
+    tip.hidden = false;
+    const r = viewer.getBoundingClientRect();
+    let x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
+    if (x + tip.offsetWidth > r.width - 8) x = e.clientX - r.left - tip.offsetWidth - 10;
+    if (y + tip.offsetHeight > r.height - 8) y = e.clientY - r.top - tip.offsetHeight - 10;
+    tip.style.transform = `translate(${x}px,${y}px)`;
+  });
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; });
+  new ResizeObserver(() => draw()).observe(viewer);
+}
+
+window.initLewis = function () {
+  if (!inited) {
+    inited = true; load(); bind();
+    try { compute(S.f); } catch (e) { S.f = 'NO3-'; compute(S.f); }
+    renderAll();
+  } else draw();
+};
+})();
+</script>
 <script>
 /* ---------- collapsible side panel (shared by all tools) ---------- */
 (function () {
@@ -2780,6 +3668,11 @@ window.initCalorimeter = function () {
       {id: 'trends', app: '#tApp', nav: 'Periodic trends', title: 'Periodic Trends', init: () => window.initTrends(),
        desc: 'The periodic table as a 3D bar chart: compare a property across periods and down groups.',
        tags: ['Radius', 'Ionization energy', 'Electronegativity']}
+    ]},
+    {name: 'Chemical bonding', blurb: 'How atoms share electrons', pages: [
+      {id: 'lewis', app: '#lApp', nav: 'Lewis structures', title: 'Lewis Structure Viewer', init: () => window.initLewis(),
+       desc: 'Type a formula or pick a molecule or ion and get its Lewis structure, built step by step, with formal charges, resonance and VSEPR shape.',
+       tags: ['Formal charge', 'Resonance', 'Octet exceptions']}
     ]},
     {name: 'Thermochemistry', blurb: 'Measuring the heat of a reaction', pages: [
       {id: 'calorimeter', app: '#cApp', nav: 'Bomb calorimeter', title: 'Bomb Calorimeter', init: () => window.initCalorimeter(),

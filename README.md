@@ -11,6 +11,7 @@ page (`index.html` or `#home`) lists them all.
 | Atomic structure | Atomic Orbital Viewer — every occupied orbital of an element or ion in 3D | `#orbitals` |
 | Atomic structure | Quantum Number Explorer — one orbital from n, l, mₗ, mₛ | `#quantum` |
 | Atomic structure | Periodic Trends — the periodic table as a 3D bar chart | `#trends` |
+| Chemical bonding | Lewis Structure Viewer — Lewis structure from a formula, step by step, with formal charges, resonance and VSEPR shape | `#lewis` |
 | Thermochemistry | Bomb Calorimeter — animated cutaway with q = C·ΔT → ΔU → ΔH | `#calorimeter` |
 
 ### Adding a tool
