@@ -991,7 +991,8 @@ body.side-off .app > .panel{display:none}
         <button type="button" role="radio" data-m="real" title="Bonds pushed away from lone pairs to typical measured angles">Lone-pair squeeze</button>
       </div>
       <div class="toggles">
-        <label class="sw"><input type="checkbox" id="vLp">Lone pairs</label>
+        <label class="sw" title="Lone pairs on the central atom"><input type="checkbox" id="vLp">Central lone pairs</label>
+        <label class="sw" title="Lone pairs on the outer atoms, as in the Lewis structure"><input type="checkbox" id="vOlp">Outer lone pairs</label>
         <label class="sw" title="Dashed polyhedron through every electron domain"><input type="checkbox" id="vFrame">Domain frame</label>
         <label class="sw"><input type="checkbox" id="vAng">Bond angles</label>
         <label class="sw"><input type="checkbox" id="vLbl">Atom labels</label>
@@ -3850,7 +3851,7 @@ window.VSEPRGeo = (function () {
 const C = window.LewisCore, G = window.VSEPRGeo;
 const $ = s => document.querySelector(s);
 const KEY = 'aov.vsepr';
-const S = {f: 'NH3', c: -1, lp: true, frame: true, ang: true, lbl: true, spin: false, real: true, pol: false, pbd: true, pnet: true, pdl: true, pmap: false};
+const S = {f: 'NH3', c: -1, lp: true, olp: true, frame: true, ang: true, lbl: true, spin: false, real: true, pol: false, pbd: true, pnet: true, pdl: true, pmap: false};
 const PRESETS = [
   ['2 domains', [['BeCl2', 'AX₂'], ['CO2', 'AX₂'], ['HCN', 'AX₂']]],
   ['3 domains', [['BF3', 'AX₃'], ['CH2O', 'AX₃'], ['SO2', 'AX₂E'], ['NO2', 'AX₂E·']]],
@@ -4010,15 +4011,16 @@ function polar(els, P, edges, lps) {
 function wholeGeo() {
   if (cur.geo) return cur.geo;
   const {m, s, form} = cur, g = window.Mol3D.build(m, s, form);
-  let P = g.pos.map(V3), lps = [];
-  g.lps.forEach((list, i) => { if (s.ctx.deg[i] >= 2) list.forEach(l => lps.push({at: i, dir: l.dir, n: l.n})); });
+  let P = g.pos.map(V3), lps = [], olps = [];
+  g.lps.forEach((list, i) => list.forEach(l => (s.ctx.deg[i] >= 2 ? lps : olps).push({at: i, dir: l.dir, n: l.n})));
   const dp = polar(m.atoms, P, m.edges, lps);
   if (dp.mag > 0.05 && !m.charge) {
     const qt = new THREE.Quaternion().setFromUnitVectors(dp.net.clone().normalize(), Y);
     P = P.map(x => x.applyQuaternion(qt));
-    lps = lps.map(l => ({at: l.at, n: l.n, dir: (() => { const w = V3(l.dir).applyQuaternion(qt); return [w.x, w.y, w.z]; })()}));
+    const rot = l => ({at: l.at, n: l.n, dir: (() => { const w = V3(l.dir).applyQuaternion(qt); return [w.x, w.y, w.z]; })()});
+    lps = lps.map(rot); olps = olps.map(rot);
   }
-  return (cur.geo = {P, lps});
+  return (cur.geo = {P, lps, olps});
 }
 function qColor(q) {
   const t = Math.min(1, Math.abs(q) / 0.9);
@@ -4028,6 +4030,35 @@ function atomLabel(e, q, deep) {
   let t = deep ? `${esc(e)}<small>…</small>` : esc(e);
   if (S.pol && S.pdl && Math.abs(q) >= 0.15) t += ` <span class="${q < 0 ? 'dn' : 'dp'}">δ${q < 0 ? '−' : '+'}</span>`;
   return t;
+}
+
+// lone pairs on outer atoms: VSEPR around each outer atom, its bond pointing back at the centre,
+// spun about that bond to keep clear of the other atoms
+function outerLps(whole, P, ids, doms, dirs) {
+  const {m, s, form} = cur;
+  if (whole) return wholeGeo().olps;
+  const out = [], others = P.slice();
+  doms.forEach((d, i) => { if (d.kind === 'lp') others.push(V3(dirs[i]).normalize().multiplyScalar(0.8)); });
+  for (let k = 1; k < P.length; k++) {
+    const j = ids[k], l = form.lone[j];
+    if (!l || s.ctx.deg[j] !== 1) continue;
+    const dn = [{kind: 'bond', en: C.en(m.atoms[S.c]), order: doms.find(d => d.j === j).order}];
+    for (let q = 0; q < Math.floor(l / 2); q++) dn.push({kind: 'lp', n: 2});
+    if (l % 2) dn.push({kind: 'lp', n: 1});
+    const local = G.place(dn).map(v => V3(v).normalize());
+    const toC = P[0].clone().sub(P[k]).normalize();
+    const qt = new THREE.Quaternion().setFromUnitVectors(local[0], toC);
+    const base = local.slice(1).map(v => v.clone().applyQuaternion(qt));
+    let best = null;
+    for (let t = 0; t < 24; t++) {
+      const a = t * Math.PI / 12, ds = base.map(v => v.clone().applyAxisAngle(toC, a));
+      let sc = Infinity;
+      for (const v of ds) { const pt = P[k].clone().addScaledVector(v, 0.6); for (let o = 0; o < others.length; o++) if (o !== k) sc = Math.min(sc, pt.distanceTo(others[o])); }
+      if (!best || sc > best.sc + 1e-6) best = {sc, ds};
+    }
+    best.ds.forEach((v, q) => out.push({at: k, dir: [v.x, v.y, v.z], n: dn[q + 1].n}));
+  }
+  return out;
 }
 
 function build() {
@@ -4040,18 +4071,18 @@ function build() {
   const eMat = new THREE.MeshBasicMaterial({color: 0xBFD0FF});
   const rad = e => e === 'H' ? 0.22 : 0.3;
   // ---- geometry: atoms (els, P), bonds (edges + orders), lone pairs that count toward the dipole
-  let els, P, edges, orders, lps, deep, rads;
+  let els, P, edges, orders, lps, deep, rads, ids;
   if (whole) {
     const g = wholeGeo();
-    els = m.atoms; P = g.P.map(x => x.clone()); edges = m.edges; orders = form.ord; lps = g.lps;
+    els = m.atoms; P = g.P.map(x => x.clone()); edges = m.edges; orders = form.ord; lps = g.lps; ids = m.atoms.map((e, i) => i);
     deep = m.atoms.map(() => false); rads = els.map(e => e === 'H' ? 0.22 : 0.32);
   } else {
-    els = [m.atoms[c]]; P = [new THREE.Vector3()]; edges = []; orders = []; lps = []; deep = [false];
+    els = [m.atoms[c]]; P = [new THREE.Vector3()]; edges = []; orders = []; lps = []; deep = [false]; ids = [c];
     rads = [m.atoms[c] === 'H' ? 0.24 : 0.36];
     doms.forEach((d, i) => {
       const u = V3(dirs[i]).normalize();
       if (d.kind === 'bond') {
-        els.push(d.el); P.push(u.multiplyScalar(d.el === 'H' ? 1.3 : 1.7)); edges.push([0, P.length - 1]); orders.push(d.order);
+        els.push(d.el); P.push(u.multiplyScalar(d.el === 'H' ? 1.3 : 1.7)); edges.push([0, P.length - 1]); orders.push(d.order); ids.push(d.j);
         deep.push(s.ctx.deg[d.j] > 1); rads.push(rad(d.el));
       } else if (s.ctx.deg[c] >= 2) lps.push({at: 0, dir: dirs[i], n: d.n});
     });
@@ -4084,20 +4115,26 @@ function build() {
     }
   });
   // ---- lone pairs
+  const lobeAt = (at, dir, n, s0, mat, em) => {
+    const u = V3(dir).normalize(), big = n === 2;
+    const lobe = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 24), mat);
+    lobe.scale.set((big ? 0.34 : 0.26) * s0, (big ? 0.62 : 0.5) * s0, (big ? 0.34 : 0.26) * s0);
+    lobe.position.copy(P[at]).addScaledVector(u, (big ? 0.78 : 0.68) * s0);
+    lobe.quaternion.setFromUnitVectors(Y, u);
+    model.add(lobe);
+    const perp = new THREE.Vector3().crossVectors(u, Math.abs(u.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0)).normalize();
+    const cE = P[at].clone().addScaledVector(u, (big ? 0.92 : 0.8) * s0);
+    for (const t of big ? [-0.09, 0.09] : [0]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05 * Math.max(s0, 0.8), 14, 10), em); e.position.copy(cE).addScaledVector(perp, t * s0); model.add(e); }
+    R = Math.max(R, P[at].distanceTo(cen) + 1.45 * s0);
+  };
   if (S.lp) {
-    const lobes = whole ? lps.map(l => ({at: l.at, dir: l.dir, n: l.n})) : doms.map((d, i) => d.kind === 'lp' ? {at: 0, dir: dirs[i], n: d.n} : null).filter(Boolean);
-    for (const l of lobes) {
-      const u = V3(l.dir).normalize(), big = l.n === 2, s0 = whole ? 0.75 : 1;
-      const lobe = new THREE.Mesh(new THREE.SphereGeometry(1, 36, 24), lpMat);
-      lobe.scale.set((big ? 0.34 : 0.26) * s0, (big ? 0.62 : 0.5) * s0, (big ? 0.34 : 0.26) * s0);
-      lobe.position.copy(P[l.at]).addScaledVector(u, (big ? 0.78 : 0.68) * s0);
-      lobe.quaternion.setFromUnitVectors(Y, u);
-      model.add(lobe);
-      let perp = new THREE.Vector3().crossVectors(u, Math.abs(u.y) < 0.9 ? Y : new THREE.Vector3(1, 0, 0)).normalize();
-      const cE = P[l.at].clone().addScaledVector(u, (big ? 0.92 : 0.8) * s0);
-      for (const t of big ? [-0.09, 0.09] : [0]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), eMat); e.position.copy(cE).addScaledVector(perp, t * s0); model.add(e); }
-      R = Math.max(R, P[l.at].distanceTo(cen) + 1.45 * s0);
-    }
+    const lobes = whole ? lps : doms.map((d, i) => d.kind === 'lp' ? {at: 0, dir: dirs[i], n: d.n} : null).filter(Boolean);
+    for (const l of lobes) lobeAt(l.at, l.dir, l.n, whole ? 0.75 : 1, lpMat, eMat);
+  }
+  if (S.olp) {
+    const oMat = new THREE.MeshPhongMaterial({color: 0x8FA9F0, transparent: true, opacity: 0.2, depthWrite: false, shininess: 30, side: THREE.DoubleSide});
+    const oE = new THREE.MeshBasicMaterial({color: 0x9FB3E6});
+    for (const l of outerLps(whole, P, ids, doms, dirs)) lobeAt(l.at, l.dir, l.n, 0.6, oMat, oE);
   }
   if (!whole) {
     // domain frame (electron geometry polyhedron through the domain tips)
@@ -4224,6 +4261,7 @@ function render(reset) {
   const pv = verdictOf(dpw, shapeName);
   const rows = [
     ['Central atom', `${esc(ce)}<small>${X} bonded atom${X === 1 ? '' : 's'}, ${E} lone pair${E === 1 ? '' : 's'}${doms.some(d => d.n === 1) ? ' (one is a single electron)' : ''}</small>`],
+    ['Lone pairs', lpSummary(E)],
     ['Class', `${axe(X, E)} · steric number ${X + E}`],
     ['Electron geometry', sh ? sh[0] : (X + E === 1 ? '—' : `${X + E} domains`)],
     ['Molecular shape', sh ? `<b class="key">${sh[1]}</b>` : (X === 1 ? '<b class="key">linear</b><small>only two atoms</small>' : X === 0 ? 'a single atom' : '—')],
@@ -4234,12 +4272,25 @@ function render(reset) {
   $('#vRead').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   $('#vTitle').innerHTML = pretty(m.body, m.charge);
   $('#vSub').innerHTML = `${centers.length > 1 ? `centre <b>${esc(ce)}</b> · ` : ''}<b>${axe(X, E)}</b> · ${sh ? sh[1] : (X === 1 ? 'linear' : '—')}`;
-  for (const [id, k] of [['#vLp', 'lp'], ['#vFrame', 'frame'], ['#vAng', 'ang'], ['#vLbl', 'lbl'], ['#vSpin', 'spin']]) $(id).checked = S[k];
+  for (const [id, k] of [['#vLp', 'lp'], ['#vOlp', 'olp'], ['#vFrame', 'frame'], ['#vAng', 'ang'], ['#vLbl', 'lbl'], ['#vSpin', 'spin']]) $(id).checked = S[k];
   document.querySelectorAll('#vMode button').forEach(b => b.setAttribute('aria-checked', String((b.dataset.m === 'real') === S.real)));
   renderPolarity(dpw, pv);
   if (reset) fit(true);
 }
 
+function lpSummary(E) {
+  const {m, s, form} = cur, g = new Map();
+  let outer = 0;
+  s.ctx.adj[S.c].forEach(([j]) => {
+    if (s.ctx.deg[j] !== 1) return;
+    const n = Math.floor(form.lone[j] / 2) + form.lone[j] % 2;
+    if (!n) return;
+    outer += n;
+    const k = m.atoms[j] + '|' + n; g.set(k, (g.get(k) || 0) + 1);
+  });
+  const parts = [...g].map(([k, c]) => { const [e, n] = k.split('|'); return `${n} on ${c > 1 ? 'each ' : ''}${esc(e)}`; });
+  return `${E} central · ${outer} outer<small>${outer ? parts.join(', ') + '. Outer lone pairs don\'t change the shape: only the central atom\'s domains count.' : 'The outer atoms have no lone pairs.'}</small>`;
+}
 function verdictOf(dp, shape) {
   const {m} = cur, maxDen = Math.max(0, ...dp.bonds.map(b => b.den));
   if (m.charge) return {verdict: 'Ion', cls: 'ion', why: `It carries an overall charge of ${chg(m.charge)}, so it is an ion. A dipole moment isn't defined for an ion, because it depends on where you put the origin. The bond dipoles are still shown.`};
@@ -4292,7 +4343,7 @@ function bind() {
   $('#vIn').addEventListener('input', () => { $('#vIn').removeAttribute('aria-invalid'); $('#vHint').textContent = ''; });
   $('#vPresets').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (b) submit(b.dataset.f); });
   $('#vCen').addEventListener('click', e => { const b = e.target.closest('button[data-c]'); if (!b) return; S.c = +b.dataset.c; save(); render(false); });
-  for (const [id, k] of [['#vLp', 'lp'], ['#vFrame', 'frame'], ['#vAng', 'ang'], ['#vLbl', 'lbl'], ['#vSpin', 'spin']])
+  for (const [id, k] of [['#vLp', 'lp'], ['#vOlp', 'olp'], ['#vFrame', 'frame'], ['#vAng', 'ang'], ['#vLbl', 'lbl'], ['#vSpin', 'spin']])
     $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k !== 'spin') render(false); });
   $('#vMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.real = b.dataset.m === 'real'; save(); render(false); });
   $('#vReset').addEventListener('click', () => fit(true));
