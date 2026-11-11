@@ -433,6 +433,24 @@ body.side-off .app > .panel{display:none}
 .legend i.va{background:var(--nucleus);height:3px;border-radius:2px}
 .vread b.key{color:var(--nucleus);font-weight:600}
 .vread small.inl{display:inline;font:400 11px var(--f-mono);margin:0}
+.vstep{display:grid;grid-template-columns:minmax(0,1fr) 34px 44px 34px;gap:6px;align-items:center;margin-bottom:8px}
+.vsl{font-size:13px}
+.vsl b{font:600 13px var(--f-mono);color:var(--accent)}
+.vstep button{height:32px;border:1px solid var(--line);background:var(--raise);border-radius:6px;font:500 16px var(--f-mono)}
+.vstep button:hover:not(:disabled){border-color:var(--accent)}
+.vstep button:disabled{opacity:.3;cursor:not-allowed}
+.vsv{height:32px;display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);font:600 15px var(--f-mono);color:var(--accent);font-variant-numeric:tabular-nums}
+.vgrid{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.vgrow{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;align-items:start}
+.vgsn{font:600 15px var(--f-mono);display:flex;flex-direction:column;line-height:1.15;padding-top:3px}
+.vgsn small{font:400 10px var(--f-body);color:var(--muted)}
+.vgcells{display:flex;flex-wrap:wrap;gap:4px}
+.vgcells button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:3px 7px 4px;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;min-width:0}
+.vgcells button b{font:500 12.5px var(--f-mono)}
+.vgcells button small{font-size:10.5px;color:var(--muted)}
+.vgcells button:hover{border-color:var(--accent)}
+.vgcells button[aria-pressed="true"]{border-color:var(--accent);background:var(--sel)}
+.vgcells button[aria-pressed="true"] b{color:var(--accent)}
 .vcen{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px}
 .vcen .vcap{font-size:12px;color:var(--muted);margin-right:4px}
 .vcen button{border:1px solid var(--line);background:var(--raise);border-radius:6px;padding:4px 9px;font:600 13px var(--f-display);display:flex;flex-direction:column;align-items:center;line-height:1.2}
@@ -952,14 +970,25 @@ body.side-off .app > .panel{display:none}
     </header>
 
     <section aria-label="Molecule or ion">
-      <h2 class="sec-h"><span>Molecule or ion</span><button type="button" class="ptbtn" id="vToLewis">Lewis structure →</button></h2>
-      <form class="qquick" id="vForm" autocomplete="off">
-        <input id="vIn" type="text" spellcheck="false" aria-label="Formula" placeholder="e.g. SF4, NH3, XeF4">
-        <button type="submit">Build</button>
-      </form>
-      <div class="qhint" id="vHint" role="alert"></div>
-      <div class="vcen" id="vCen" hidden></div>
-      <div class="lpre" id="vPresets"></div>
+      <h2 class="sec-h"><span>Molecule</span><button type="button" class="ptbtn" id="vToLewis">Lewis structure →</button></h2>
+      <div class="seg" role="radiogroup" aria-label="Build from" id="vSrc" style="margin-bottom:14px">
+        <button type="button" role="radio" data-m="build">Set n and m</button>
+        <button type="button" role="radio" data-m="formula">From a formula</button>
+      </div>
+      <div id="vBuild">
+        <div class="vstep"><span class="vsl">Bonded atoms <b>X</b></span><button type="button" id="vXm" aria-label="Fewer bonded atoms">−</button><span class="vsv" id="vXn"></span><button type="button" id="vXp" aria-label="More bonded atoms">+</button></div>
+        <div class="vstep"><span class="vsl">Lone pairs <b>E</b> on A</span><button type="button" id="vEm" aria-label="Fewer lone pairs">−</button><span class="vsv" id="vEn"></span><button type="button" id="vEp" aria-label="More lone pairs">+</button></div>
+        <div class="vgrid" id="vGrid"></div>
+      </div>
+      <div id="vFormulaBox" hidden>
+        <form class="qquick" id="vForm" autocomplete="off">
+          <input id="vIn" type="text" spellcheck="false" aria-label="Formula" placeholder="e.g. SF4, NH3, XeF4">
+          <button type="submit">Build</button>
+        </form>
+        <div class="qhint" id="vHint" role="alert"></div>
+        <div class="vcen" id="vCen" hidden></div>
+        <div class="lpre" id="vPresets"></div>
+      </div>
     </section>
 
     <section aria-label="Geometry">
@@ -1000,8 +1029,9 @@ body.side-off .app > .panel{display:none}
       </div>
     </section>
 
-    <p class="note"><b>How it works.</b> The Lewis structure gives the central atom's <b>electron domains</b>: each bonded atom counts once, whether the bond is single, double or triple, and so does each lone pair. The domains repel and settle as far apart as possible: a line, triangle, tetrahedron, trigonal bipyramid, octahedron or pentagonal bipyramid. That is the <b>electron geometry</b>. The <b>molecular shape</b> names only where the atoms are. In a trigonal bipyramid, lone pairs take the roomier equatorial sites, which is why SF<sub>4</sub> is a seesaw and ClF<sub>3</sub> is T-shaped.</p>
-    <p class="note"><b>Lone-pair squeeze</b> sets each class to typical measured angles (NH<sub>3</sub> 107°, H<sub>2</sub>O 104.5°, SF<sub>4</sub> 102°/173°, ClF<sub>3</sub> 87.5°, BrF<sub>5</sub> 85°). Individual molecules differ by a few degrees: PF<sub>3</sub> is 98°, for example. For molecules with several centres, pick one central atom at a time; atoms marked … continue into the rest of the molecule.</p>
+    <p class="note"><b>Set n and m</b> builds a generic AX<sub>n</sub>E<sub>m</sub>: a central atom A with n bonded atoms X and m lone pairs. Change either count and watch the domains rearrange. <b>From a formula</b> gets the counts from a real Lewis structure.</p>
+    <p class="note"><b>How it works.</b> The central atom's <b>electron domains</b> come from its bonds and lone pairs: each bonded atom counts once, whether the bond is single, double or triple, and so does each lone pair. The domains repel and settle as far apart as possible: a line, triangle, tetrahedron, trigonal bipyramid, octahedron or pentagonal bipyramid. That is the <b>electron geometry</b>. The <b>molecular shape</b> names only where the atoms are. In a trigonal bipyramid, lone pairs take the roomier equatorial sites, which is why AX<sub>4</sub>E is a seesaw and AX<sub>3</sub>E<sub>2</sub> is T-shaped.</p>
+    <p class="note"><b>Lone-pair squeeze</b> pushes the bonds away from the lone pairs, to angles typical of each class: AX<sub>3</sub>E ≈ 107°, AX<sub>2</sub>E<sub>2</sub> ≈ 104.5°, AX<sub>4</sub>E ≈ 102°/173°, AX<sub>3</sub>E<sub>2</sub> ≈ 87.5°, AX<sub>5</sub>E ≈ 85°. Real molecules differ by a few degrees. In formula mode, for molecules with several centres, pick one central atom at a time; atoms marked … continue into the rest of the molecule.</p>
   </aside>
 </div>
 
@@ -3850,8 +3880,16 @@ window.VSEPRGeo = (function () {
 (function () {
 const C = window.LewisCore, G = window.VSEPRGeo;
 const $ = s => document.querySelector(s);
+// generic atoms for the AXₙEₘ builder: A (central) and X (outer, more electronegative)
+const EN = e => e === 'A' ? 2.5 : e === 'X' ? 3.5 : C.en(e);
+const PER = e => (e === 'A' || e === 'X') ? 2 : C.per(e);
+const GEO = {1: '—', 2: 'linear', 3: 'trigonal planar', 4: 'tetrahedral', 5: 'trigonal bipyramidal', 6: 'octahedral', 7: 'pentagonal bipyramidal'};
+const SHAPES = Object.assign({}, C.SHAPE, {'5,2': ['pentagonal bipyramidal', 'pentagonal planar', '72°', 'sp³d³'],
+  '1,0': ['linear', 'linear', '—', '—'], '1,1': ['linear', 'linear', '—', 'sp'], '1,2': ['trigonal planar', 'linear', '—', 'sp²'], '1,3': ['tetrahedral', 'linear', '—', 'sp³']});
+// allowed AXₙEₘ classes: the ones VSEPR names (steric number up to 7), plus X = 1 (two atoms)
+const okClass = (X, E) => X >= 1 && E >= 0 && !!SHAPES[X + ',' + E];
 const KEY = 'aov.vsepr';
-const S = {f: 'NH3', c: -1, lp: true, olp: true, frame: true, ang: true, lbl: true, spin: false, real: true, pol: false, pbd: true, pnet: true, pdl: true, pmap: false};
+const S = {mode: 'build', X: 3, E: 1, f: 'NH3', c: -1, lp: true, olp: true, frame: true, ang: true, lbl: true, spin: false, real: true, pol: false, pbd: true, pnet: true, pdl: true, pmap: false};
 const PRESETS = [
   ['2 domains', [['BeCl2', 'AX₂'], ['CO2', 'AX₂'], ['HCN', 'AX₂']]],
   ['3 domains', [['BF3', 'AX₃'], ['CH2O', 'AX₃'], ['SO2', 'AX₂E'], ['NO2', 'AX₂E·']]],
@@ -3860,7 +3898,7 @@ const PRESETS = [
   ['6 & 7 domains', [['SF6', 'AX₆'], ['BrF5', 'AX₅E'], ['XeF4', 'AX₄E₂'], ['ICl4-', 'AX₄E₂'], ['IF7', 'AX₇']]],
   ['Several centres', [['C2H4', 'ethylene'], ['CH3OH', 'methanol'], ['CH3COOH', 'acetic acid'], ['H2O2', 'peroxide']]]
 ];
-const COL = {H: '#C9CFDA', C: '#8A93A1', N: '#7FA6FF', O: '#FF7A70', F: '#8EDB8E', Cl: '#7FD07F', Br: '#D98A66', I: '#B98CF5', S: '#EFCB55', Se: '#E8B85A', P: '#FFA45C', As: '#FFA45C', B: '#F2A895', Be: '#B9DD78', Al: '#B4BCCC', Si: '#CDB68F', Ge: '#CDB68F', Xe: '#5FCAD6', Kr: '#5FCAD6', Ne: '#5FCAD6', Ar: '#5FCAD6', He: '#5FCAD6', Te: '#D0A060', Sb: '#D0A060', Sn: '#A8B0BC'};
+const COL = {A: '#A7B0C0', X: '#7FD07F', H: '#C9CFDA', C: '#8A93A1', N: '#7FA6FF', O: '#FF7A70', F: '#8EDB8E', Cl: '#7FD07F', Br: '#D98A66', I: '#B98CF5', S: '#EFCB55', Se: '#E8B85A', P: '#FFA45C', As: '#FFA45C', B: '#F2A895', Be: '#B9DD78', Al: '#B4BCCC', Si: '#CDB68F', Ge: '#CDB68F', Xe: '#5FCAD6', Kr: '#5FCAD6', Ne: '#5FCAD6', Ar: '#5FCAD6', He: '#5FCAD6', Te: '#D0A060', Sb: '#D0A060', Sn: '#A8B0BC'};
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const chg = q => (Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : '−');
 const pretty = (body, q) => esc(body).replace(/(\d+)/g, '<sub>$1</sub>') + (q ? `<sup>${chg(q)}</sup>` : '');
@@ -3896,16 +3934,27 @@ function compute(f) {
   const m = C.molecule(f), s = C.solve(m, false), form = s.res[0], deg = s.ctx.deg;
   let centers = m.atoms.map((e, i) => i).filter(i => m.atoms[i] !== 'H' && deg[i] >= 2).sort((a, b) => deg[b] - deg[a] || a - b);
   if (!centers.length) {
-    const hv = m.atoms.map((e, i) => i).filter(i => m.atoms[i] !== 'H').sort((a, b) => C.en(m.atoms[a]) - C.en(m.atoms[b]));
+    const hv = m.atoms.map((e, i) => i).filter(i => m.atoms[i] !== 'H').sort((a, b) => EN(m.atoms[a]) - EN(m.atoms[b]));
     centers = [hv.length ? hv[0] : 0];
   }
   cur = {f, m, s, form, centers, geo: null};
   S.f = f;
   if (!centers.includes(S.c)) S.c = centers[0];
 }
+function generic() {
+  if (!okClass(S.X, S.E)) { S.X = 3; S.E = 1; }
+  const X = S.X, E = S.E, atoms = ['A'].concat(Array(X).fill('X'));
+  const edges = atoms.slice(1).map((e, i) => [0, i + 1]);
+  const deg = atoms.map((e, i) => i ? 1 : X), adj = atoms.map(() => []);
+  edges.forEach(([a, b], k) => { adj[a].push([b, k]); adj[b].push([a, k]); });
+  const form = {ord: edges.map(() => 1), lone: atoms.map((e, i) => i ? 0 : 2 * E), fc: atoms.map(() => 0)};
+  cur = {f: S.f, m: {atoms, edges, charge: 0, body: axe(X, E), counts: new Map()}, s: {ctx: {deg, adj}}, form, centers: [0], geo: null, generic: true};
+  S.c = 0;
+}
+function load2() { if (S.mode === 'build') generic(); else compute(S.f); }
 function domains(c) {
   const {m, s, form} = cur, doms = [];
-  s.ctx.adj[c].forEach(([j, k]) => doms.push({kind: 'bond', j, el: m.atoms[j], en: C.en(m.atoms[j]), order: form.ord[k]}));
+  s.ctx.adj[c].forEach(([j, k]) => doms.push({kind: 'bond', j, el: m.atoms[j], en: EN(m.atoms[j]), order: form.ord[k]}));
   const l = form.lone[c];
   for (let k = 0; k < Math.floor(l / 2); k++) doms.push({kind: 'lp', n: 2});
   if (l % 2) doms.push({kind: 'lp', n: 1});
@@ -3916,7 +3965,7 @@ function submit(f) {
   const hint = $('#vHint'), inp = $('#vIn');
   const keep = S.c;
   try {
-    S.c = -1; compute(f);
+    S.c = -1; compute(f); S.mode = 'formula';
     hint.textContent = ''; inp.removeAttribute('aria-invalid');
     save(); render(true);
   } catch (e) { S.c = keep; hint.textContent = e.message; inp.setAttribute('aria-invalid', 'true'); }
@@ -3994,12 +4043,12 @@ function placeLabels() {
 }
 
 const single = () => cur.centers.length === 1 && cur.m.atoms.length === 1 + cur.s.ctx.deg[S.c];
-const lpw = e => (C.per(e) <= 2 ? 0.7 : 0.315);
+const lpw = e => (PER(e) <= 2 ? 0.7 : 0.315);
 /* bond dipoles point to the more electronegative atom (δ−), length ΔEN; inner lone pairs add along their direction */
 function polar(els, P, edges, lps) {
   const q = els.map(() => 0), net = new THREE.Vector3(), bonds = [];
   edges.forEach(([a, b]) => {
-    const d = C.en(els[b]) - C.en(els[a]), u = P[b].clone().sub(P[a]).normalize(), neg = d >= 0 ? b : a, den = Math.abs(d);
+    const d = EN(els[b]) - EN(els[a]), u = P[b].clone().sub(P[a]).normalize(), neg = d >= 0 ? b : a, den = Math.abs(d);
     net.addScaledVector(u, d);
     bonds.push({a, b, den, neg});
     q[neg] -= den / 2; q[neg === a ? b : a] += den / 2;
@@ -4042,7 +4091,7 @@ function outerLps(whole, P, ids, doms, dirs) {
   for (let k = 1; k < P.length; k++) {
     const j = ids[k], l = form.lone[j];
     if (!l || s.ctx.deg[j] !== 1) continue;
-    const dn = [{kind: 'bond', en: C.en(m.atoms[S.c]), order: doms.find(d => d.j === j).order}];
+    const dn = [{kind: 'bond', en: EN(m.atoms[S.c]), order: doms.find(d => d.j === j).order}];
     for (let q = 0; q < Math.floor(l / 2); q++) dn.push({kind: 'lp', n: 2});
     if (l % 2) dn.push({kind: 'lp', n: 1});
     const local = G.place(dn).map(v => V3(v).normalize());
@@ -4229,10 +4278,14 @@ function render(reset) {
   const {m, s, centers} = cur;
   const {doms, dirs, dp: viewDP} = build();
   const X = doms.filter(d => d.kind === 'bond').length, E = doms.length - X;
-  const sh = C.SHAPE[X + ',' + E];
+  const sh = SHAPES[X + ',' + E];
   const ce = m.atoms[S.c];
   $('#vIn').value = S.f;
   renderPresets();
+  const gen = !!cur.generic;
+  document.querySelectorAll('#vSrc button').forEach(b => b.setAttribute('aria-checked', String((b.dataset.m === 'build') === gen)));
+  $('#vBuild').hidden = !gen; $('#vFormulaBox').hidden = gen; $('#vToLewis').hidden = gen;
+  if (gen) renderBuilder();
   // centre picker
   const cn = $('#vCen');
   if (centers.length > 1) {
@@ -4263,9 +4316,9 @@ function render(reset) {
     ['Central atom', `${esc(ce)}<small>${X} bonded atom${X === 1 ? '' : 's'}, ${E} lone pair${E === 1 ? '' : 's'}${doms.some(d => d.n === 1) ? ' (one is a single electron)' : ''}</small>`],
     ['Lone pairs', lpSummary(E)],
     ['Class', `${axe(X, E)} · steric number ${X + E}`],
-    ['Electron geometry', sh ? sh[0] : (X + E === 1 ? '—' : `${X + E} domains`)],
+    ['Electron geometry', sh ? sh[0] : GEO[X + E] || `${X + E} domains`],
     ['Molecular shape', sh ? `<b class="key">${sh[1]}</b>` : (X === 1 ? '<b class="key">linear</b><small>only two atoms</small>' : X === 0 ? 'a single atom' : '—')],
-    [S.real ? 'Bond angles (typical)' : 'Bond angles (ideal)', angTxt + (S.real && E && sh ? `<small>Lone pairs take more room than bonds and squeeze the angles below the ideal ${sh[2]}.</small>` : '')],
+    [S.real ? 'Bond angles (typical)' : 'Bond angles (ideal)', angTxt + (S.real && E && sh && squeezed() ? `<small>Lone pairs take more room than bonds and squeeze the angles below the ideal ${sh[2]}.</small>` : (E && sh && !squeezed() && S.real && X > 1 ? '<small>The lone pairs sit opposite each other, so they push equally and the angles stay ideal.</small>' : ''))],
     ['Hybridization', sh ? sh[3] : '—']
   ];
   rows.push(['Polarity', `${pv.verdict.toLowerCase()}${S.pol ? '' : '<small>turn on <b>Show polarity</b> below to see the dipoles</small>'}`]);
@@ -4278,7 +4331,37 @@ function render(reset) {
   if (reset) fit(true);
 }
 
+function renderBuilder() {
+  $('#vXn').textContent = S.X; $('#vEn').textContent = S.E;
+  $('#vXm').disabled = S.X <= 1; $('#vXp').disabled = S.X >= 7;
+  $('#vEm').disabled = S.E <= 0; $('#vEp').disabled = !okClass(S.X, S.E + 1);
+  const rows = [];
+  for (let n = 2; n <= 7; n++) {
+    const cells = [];
+    for (let E = 0; E <= n - 1; E++) {
+      const X = n - E;
+      if (!okClass(X, E)) continue;
+      const sh = SHAPES[X + ',' + E];
+      cells.push(`<button type="button" data-x="${X}" data-e="${E}" aria-pressed="${X === S.X && E === S.E}"><b>${axe(X, E)}</b><small>${sh ? sh[1] : ''}</small></button>`);
+    }
+    if (cells.length) rows.push(`<div class="vgrow"><span class="vgsn">${n}<small>${GEO[n]}</small></span><div class="vgcells">${cells.join('')}</div></div>`);
+  }
+  $('#vGrid').innerHTML = rows.join('');
+}
+function setClass(X, E) {
+  if (X < 1 || X > 7) return;
+  if (!okClass(X, E)) { // keep the change: clamp lone pairs to the largest that still works
+    let e = E; while (e > 0 && !okClass(X, e)) e--;
+    if (!okClass(X, e)) return; E = e;
+  }
+  S.X = X; S.E = E; S.mode = 'build'; generic(); save(); render(true);
+}
+function squeezed() {
+  const {ideal, real} = domains(S.c);
+  return ideal.some((v, i) => G.angle(v, real[i]) > 0.3);
+}
 function lpSummary(E) {
+  if (cur.generic) return `${E} on A`;
   const {m, s, form} = cur, g = new Map();
   let outer = 0;
   s.ctx.adj[S.c].forEach(([j]) => {
@@ -4324,13 +4407,13 @@ function renderPolarity(dp, pv) {
   const rows = [];
   if (!m.charge) rows.push(['Net dipole (model)', `${dp.mag.toFixed(2)}<small>vector sum of bond and lone-pair dipoles, in ΔEN units (not debye)</small>`]);
   if (meas != null) rows.push(['Measured μ', `<b class="key">${meas.toFixed(2)} D</b><small>gas phase, CRC Handbook</small>`]);
-  else if (!m.charge) rows.push(['Measured μ', '—<small>no reference value for this one</small>']);
+  else if (!m.charge && !cur.generic) rows.push(['Measured μ', '—<small>no reference value for this one</small>']);
   $('#vPRead').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   const g = new Map();
   m.edges.forEach(([a, b]) => {
-    const [x, y] = [m.atoms[a], m.atoms[b]].sort((p, q) => C.en(p) - C.en(q));
-    const k = `${x}–${y}`, den = Math.abs(C.en(x) - C.en(y));
-    if (!g.has(k)) g.set(k, {k, den, n: 0, neg: C.en(x) > C.en(y) ? x : y});
+    const [x, y] = [m.atoms[a], m.atoms[b]].sort((p, q) => EN(p) - EN(q));
+    const k = `${x}–${y}`, den = Math.abs(EN(x) - EN(y));
+    if (!g.has(k)) g.set(k, {k, den, n: 0, neg: EN(x) > EN(y) ? x : y});
     g.get(k).n++;
   });
   $('#vPBonds').innerHTML = [...g.values()].sort((a, b) => b.den - a.den).map(b =>
@@ -4339,6 +4422,17 @@ function renderPolarity(dp, pv) {
 }
 
 function bind() {
+  $('#vSrc').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.m === 'build') { S.mode = 'build'; generic(); }
+    else { S.mode = 'formula'; try { compute(S.f); } catch (err) { compute('NH3'); } }
+    save(); render(true);
+  });
+  $('#vXm').addEventListener('click', () => setClass(S.X - 1, S.E));
+  $('#vXp').addEventListener('click', () => setClass(S.X + 1, S.E));
+  $('#vEm').addEventListener('click', () => setClass(S.X, S.E - 1));
+  $('#vEp').addEventListener('click', () => setClass(S.X, S.E + 1));
+  $('#vGrid').addEventListener('click', e => { const b = e.target.closest('button[data-x]'); if (b) setClass(+b.dataset.x, +b.dataset.e); });
   $('#vForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#vIn').value.trim(); submit(PRE.get(canon(v)) || v); });
   $('#vIn').addEventListener('input', () => { $('#vIn').removeAttribute('aria-invalid'); $('#vHint').textContent = ''; });
   $('#vPresets').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (b) submit(b.dataset.f); });
@@ -4357,11 +4451,12 @@ if (location.hash === '#polarity') {   // the polarity page now lives inside thi
   try { const o = JSON.parse(localStorage.getItem(KEY) || '{}'); o.pol = true; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
   S.pol = true; history.replaceState(null, '', '#vsepr');
 }
-window.openVSEPR = function (f) { pending = f; try { const o = JSON.parse(localStorage.getItem(KEY) || '{}'); o.f = f; o.c = -1; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} location.hash = '#vsepr'; };
+window.openVSEPR = function (f) { pending = f; try { const o = JSON.parse(localStorage.getItem(KEY) || '{}'); o.f = f; o.c = -1; o.mode = 'formula'; localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} location.hash = '#vsepr'; };
 window.initVSEPR = function () {
   if (!inited) {
     inited = true; load(); bind(); initScene();
-    try { compute(pending || S.f); } catch (e) { compute('NH3'); }
+    if (pending) S.mode = 'formula';
+    try { pending ? compute(pending) : load2(); } catch (e) { S.mode = 'build'; generic(); }
     pending = null;
     render(true);
     return;
