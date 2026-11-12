@@ -212,14 +212,29 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 .site{flex:none;display:flex;align-items:stretch;gap:20px;height:46px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:30}
 .site-brand{flex:none;display:flex;align-items:center;gap:8px;color:var(--fg);text-decoration:none;font:700 15px/1 var(--f-display);font-stretch:88%;letter-spacing:.03em}
 .site-brand svg{width:20px;height:20px;color:var(--accent);flex:none}
-.site-nav{display:flex;align-items:stretch;min-width:0;overflow-x:auto;scrollbar-width:none}
-.site-nav::-webkit-scrollbar{display:none}
-.nav-group{display:flex;align-items:stretch;gap:2px;padding:0 16px;border-left:1px solid var(--line);flex:none}
-.nav-cap{align-self:center;margin-right:8px;font:500 10.5px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);opacity:.8;white-space:nowrap}
-.site-nav a{display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;border-top:2px solid transparent}
-.site-nav a:hover{color:var(--fg)}
-.site-nav a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
-.site-nav a:focus-visible,.site-brand:focus-visible{outline-offset:-3px}
+.site-nav{display:flex;align-items:stretch;gap:2px;min-width:0;padding-left:12px;border-left:1px solid var(--line)}
+/* one dropdown per topic; on phones a single menu with everything */
+.nav-dd{position:relative;display:flex}
+.nav-btn{display:flex;align-items:center;gap:7px;padding:0 12px;border:0;background:none;color:var(--muted);font:500 13px var(--f-body);white-space:nowrap;border-top:2px solid transparent;border-bottom:2px solid transparent;cursor:pointer}
+.nav-btn:hover,.nav-dd.open > .nav-btn{color:var(--fg)}
+.nav-dd.active > .nav-btn{color:var(--fg);border-bottom-color:var(--accent)}
+.nav-cur{font:500 12px var(--f-body);color:var(--accent)}
+.nav-cur:empty{display:none}
+.nav-cur::before{content:"·";color:var(--muted);margin-right:7px}
+.nav-btn svg{width:10px;height:10px;flex:none;opacity:.7;transition:transform .15s}
+.nav-dd.open > .nav-btn svg{transform:rotate(180deg)}
+.nav-btn:focus-visible,.site-brand:focus-visible{outline-offset:-3px}
+.nav-menu{position:absolute;top:calc(100% + 1px);left:0;min-width:360px;max-width:min(420px,calc(100vw - 24px));display:none;flex-direction:column;gap:2px;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.5);z-index:60}
+.nav-dd.open > .nav-menu{display:flex}
+.nav-menu a{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:7px;color:var(--fg);text-decoration:none}
+.nav-menu a:hover,.nav-menu a:focus-visible{background:var(--raise);outline:none}
+.nav-menu a[aria-current="page"]{background:var(--sel)}
+.nav-menu a[aria-current="page"] b{color:var(--accent)}
+.nav-menu b{font:600 13.5px/1.25 var(--f-body)}
+.nav-menu small{font:400 11.5px/1.35 var(--f-mono);color:var(--muted)}
+.nav-menu h4{margin:8px 10px 2px;font:500 10.5px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.nav-menu h4:first-child{margin-top:4px}
+.nav-all{display:none}
 
 /* ---------- home ---------- */
 .home{flex:1;min-height:0;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,var(--bg-hi) 0%,var(--bg) 70%)}
@@ -240,14 +255,15 @@ input[type=color]::-moz-color-swatch{border:none;border-radius:5px}
 @media (max-width:760px){
   .site{position:sticky;top:0;gap:12px}
   .site-brand span{display:none}
-  .nav-cap{display:none}
-  .nav-group{padding:0 8px}
-  .nav-group:first-child{border-left:0;padding-left:0}
+  .site-nav{padding-left:4px}
+  .nav-dd:not(.nav-all){display:none}
+  .nav-all{display:flex}
+  .nav-all > .nav-menu{position:fixed;top:47px;left:8px;right:8px;max-width:none;max-height:calc(100svh - 64px);overflow:auto}
   .home{overflow:visible}
   .home-in{padding:28px 16px 48px}
   .home-head h1{font-size:27px}
 }
-@media (prefers-reduced-motion:reduce){ .card{transition:none} }
+@media (prefers-reduced-motion:reduce){ .card{transition:none} .nav-btn svg{transition:none} }
 
 .qtitle{background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:3px}
 .qname{font:700 30px/1.05 var(--f-display);font-stretch:85%;letter-spacing:.01em}
@@ -5964,9 +5980,37 @@ window.initMO = function () {
   const $ = s => document.querySelector(s);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
-  $('#siteNav').innerHTML = TOPICS.map(t =>
-    `<div class="nav-group" role="group" aria-label="${esc(t.name)}"><span class="nav-cap" aria-hidden="true">${esc(t.name)}</span>` +
-    t.pages.map(p => `<a href="#${p.id}" data-view="${p.id}">${esc(p.nav)}</a>`).join('') + '</div>').join('');
+  // header: a dropdown per topic (desktop) plus one all-tools menu (phones)
+  const CHEV = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+  const item = p => `<a role="menuitem" href="#${p.id}" data-view="${p.id}"><b>${esc(p.title)}</b><small>${esc(p.tags.join(' · '))}</small></a>`;
+  $('#siteNav').innerHTML = TOPICS.map((t, i) =>
+    `<div class="nav-dd" data-t="${i}"><button type="button" class="nav-btn" aria-haspopup="true" aria-expanded="false"><span>${esc(t.name)}</span><span class="nav-cur"></span>${CHEV}</button>` +
+    `<div class="nav-menu" role="menu" aria-label="${esc(t.name)}">${t.pages.map(item).join('')}</div></div>`).join('') +
+    `<div class="nav-dd nav-all"><button type="button" class="nav-btn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true" style="width:14px;height:14px;opacity:1;transform:none"><path d="M2 3.5h10M2 7h10M2 10.5h10" stroke="currentColor" stroke-width="1.5"/></svg><span class="nav-all-t">Tools</span><span class="nav-cur"></span></button>` +
+    `<div class="nav-menu" role="menu" aria-label="All tools">${TOPICS.map(t => `<h4>${esc(t.name)}</h4>${t.pages.map(item).join('')}`).join('')}</div></div>`;
+  const dds = [...document.querySelectorAll('.nav-dd')];
+  const setOpen = (dd, on) => { dd.classList.toggle('open', on); dd.querySelector('.nav-btn').setAttribute('aria-expanded', String(on)); };
+  const closeAll = except => dds.forEach(d => { if (d !== except) setOpen(d, false); });
+  const hover = window.matchMedia('(hover:hover) and (pointer:fine)');
+  dds.forEach(dd => {
+    const btn = dd.querySelector('.nav-btn');
+    let t = 0;
+    // a click right after hover-opening should keep the menu open, not toggle it shut
+    btn.addEventListener('click', () => { const on = dd.dataset.hov === '1' ? true : !dd.classList.contains('open'); dd.dataset.hov = ''; closeAll(dd); setOpen(dd, on); if (on) { const cur = dd.querySelector('a[aria-current="page"]') || dd.querySelector('a'); if (cur && btn.matches(':focus-visible')) cur.focus(); } });
+    dd.addEventListener('mouseenter', () => { if (!hover.matches || dd.classList.contains('nav-all')) return; clearTimeout(t); closeAll(dd); if (!dd.classList.contains('open')) dd.dataset.hov = '1'; setOpen(dd, true); });
+    dd.addEventListener('mouseleave', () => { if (!hover.matches || dd.classList.contains('nav-all')) return; dd.dataset.hov = ''; t = setTimeout(() => setOpen(dd, false), 160); });
+    dd.addEventListener('keydown', e => {
+      const links = [...dd.querySelectorAll('a')], i = links.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (!dd.classList.contains('open')) setOpen(dd, true);
+        const n = i < 0 ? (e.key === 'ArrowDown' ? 0 : links.length - 1) : (i + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length;
+        links[n].focus();
+      } else if (e.key === 'Escape') { setOpen(dd, false); btn.focus(); }
+    });
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.nav-dd')) closeAll(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+  document.querySelectorAll('.nav-menu a').forEach(a => a.addEventListener('click', () => closeAll()));
 
   $('#homeTopics').innerHTML = TOPICS.map(t =>
     `<section class="topic"><h2 class="topic-h">${esc(t.name)}<span>${esc(t.blurb)}</span></h2><div class="cards">` +
@@ -5977,7 +6021,13 @@ window.initMO = function () {
     const page = PAGES.find(p => '#' + p.id === location.hash) || HOME;
     document.documentElement.dataset.view = page.id;
     for (const p of PAGES) $(p.app).hidden = p !== page;
-    document.querySelectorAll('.site-nav a').forEach(a => { if (a.dataset.view === page.id) { a.setAttribute('aria-current', 'page'); a.scrollIntoView({block: 'nearest', inline: 'nearest'}); } else a.removeAttribute('aria-current'); });
+    document.querySelectorAll('.site-nav a').forEach(a => { if (a.dataset.view === page.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    document.querySelectorAll('.nav-dd').forEach(dd => {
+      const on = !!dd.querySelector(`a[data-view="${page.id}"]`);
+      dd.classList.toggle('active', on && page !== HOME);
+      dd.querySelector('.nav-cur').textContent = on && page !== HOME ? page.nav : '';
+      dd.classList.remove('open'); dd.querySelector('.nav-btn').setAttribute('aria-expanded', 'false');
+    });
     document.title = page === HOME ? SITE : `${page.title} · ${SITE}`;
     if (page.init) page.init();
     window.scrollTo(0, 0);
