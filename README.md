@@ -14,6 +14,7 @@ page (`index.html` or `#home`) lists them all.
 | Chemical bonding | Lewis Structure Viewer — Lewis structure from a formula, step by step, with formal charges, resonance and VSEPR shape | `#lewis` |
 | Chemical bonding | VSEPR Model — 3D electron-domain geometry with lone pairs and bond angles; optional polarity view (bond dipoles, net dipole, δ+/δ−) | `#vsepr` |
 | Chemical bonding | Valence Bond Theory — promotion and hybridization step by step with orbital diagrams; σ and π overlap with an energy curve | `#vbt` |
+| Chemical bonding | Molecular Orbital Theory — MO diagrams for H₂–Ne₂ and ions with bond order and magnetism; 3D bonding/antibonding orbitals | `#mo` |
 | Thermochemistry | Bomb Calorimeter — animated cutaway with q = C·ΔT → ΔU → ΔH | `#calorimeter` |
 
 ### Adding a tool

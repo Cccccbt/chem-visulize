@@ -556,6 +556,35 @@ body.side-off .app > .panel{display:none}
 .bchart{height:150px}
 @media (prefers-reduced-motion:reduce){ .brow{transition:none} }
 @media (max-width:760px){ #bViewer{height:62svh;min-height:360px} #bApp .qtitle{max-width:calc(100vw - 150px)} }
+
+/* ---------- molecular-orbital page ---------- */
+.mdiag{display:block;width:100%;height:auto;user-select:none}
+.mdiag .mao{stroke:#8A93A1;stroke-width:2}
+.mdiag .mmo{stroke-width:2.5}
+.mdiag .mmo.b{stroke:#A9C1FF}
+.mdiag .mmo.a{stroke:#FF8A80}
+.mdiag .mmo.on{stroke-width:4}
+.mdiag .mcon{stroke:#3a4352;stroke-width:1;stroke-dasharray:3 3}
+.mdiag .ma{fill:var(--nucleus);font:600 13px var(--f-body);text-anchor:middle}
+.mdiag .mlab{fill:var(--muted);font:500 10.5px var(--f-mono);text-anchor:middle}
+.mdiag .mhead{fill:var(--fg);font:600 12px var(--f-display);text-anchor:middle}
+.mdiag .mname{fill:#A9C1FF;font:500 11.5px var(--f-mono)}
+.mdiag .mname.x{fill:#FF8A80}
+.mdiag .mst{font-size:12px}
+.mdiag .max{stroke:#5b6577;stroke-width:1.2;fill:none}
+.mdiag .mhit{fill:transparent;cursor:pointer}
+.mdiag .mlev:hover .mhit{fill:rgba(169,193,255,.07)}
+.mdiag .mlev.on .mhit{fill:rgba(169,193,255,.12)}
+.mdiag .mlev:focus{outline:none}
+.mdiag .mlev:focus-visible .mhit{stroke:var(--accent);stroke-width:1}
+.mhint{font-size:11px;letter-spacing:0;text-transform:none;font-weight:400;color:var(--muted)}
+.mconf{font:500 12px/1.6 var(--f-mono)}
+.mnotes p{margin:10px 0 0;font-size:12.5px;line-height:1.55;color:var(--muted)}
+.mnotes p:first-child{margin-top:12px}
+.borb .mb{font:500 11px var(--f-body);color:#A9C1FF;border:1px solid rgba(169,193,255,.4);border-radius:999px;padding:1px 7px;margin-left:6px}
+.borb .mx{font:500 11px var(--f-body);color:#FF8A80;border:1px solid rgba(255,138,128,.4);border-radius:999px;padding:1px 7px;margin-left:6px}
+.mop{position:absolute;left:0;top:0;font:700 22px/1 var(--f-body);color:var(--fg);pointer-events:none;will-change:transform}
+@media (max-width:760px){ #mViewer{height:62svh;min-height:360px} #mApp .qtitle{max-width:calc(100vw - 150px)} }
 </style>
 
 <header class="site">
@@ -1218,6 +1247,62 @@ body.side-off .app > .panel{display:none}
 
     <p class="note"><b>How it works.</b> In valence bond theory, each bond is a pair of electrons shared in the overlap of one orbital from each atom. More overlap gives a stronger bond. To make its bonds point the right way, an atom can <b>hybridize</b>: it mixes its s and p (and d) orbitals into equivalent hybrids. That needs, when there aren't enough unpaired electrons, <b>promoting</b> an electron to a higher orbital first. Head-on overlap along the bond axis gives a <b>σ bond</b>. Side-on overlap of parallel p orbitals gives a <b>π bond</b>, which sits above and below the axis. A double bond is σ + π, and a triple bond is σ + 2π.</p>
     <p class="note"><b>Shapes shown</b> follow the angular part of each orbital, sharpened so the lobes are easy to tell apart. Pink and blue (or light and dark) are the two phases of ψ: the sign of the wavefunction, not charge. The bond view draws one surface of constant |ψ<sub>A</sub> + ψ<sub>B</sub>| (in-phase overlap). The energy curve is a schematic Morse curve, not data for a particular molecule. Hybrids with d orbitals (sp³d, sp³d²) are the textbook model; modern calculations show d orbitals contribute little to these bonds.</p>
+  </aside>
+</div>
+
+<div class="app" id="mApp" hidden>
+  <main class="viewer" id="mViewer">
+    <div class="labels" id="mLabels"></div>
+    <div class="hud hud-tl">
+      <div class="qtitle"><div class="qname" id="mTitle"></div><div class="qtuple" id="mSub"></div></div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="hbtn" id="mReset" type="button">Reset view</button>
+    </div>
+    <div class="hud hud-br">
+      <div class="legend"><span><i class="bpp"></i>+ phase</span><span><i class="bpn"></i>− phase</span></div>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <header class="brand">
+      <h1>Molecular Orbital Theory</h1>
+      <p>Atomic orbitals combine into bonding and antibonding orbitals that belong to the whole molecule</p>
+    </header>
+
+    <section aria-label="Molecule">
+      <h2 class="sec-h">Diatomic molecule</h2>
+      <div class="bchips" id="mEls"></div>
+      <div class="vstep" style="margin-top:12px"><span class="vsl">Charge</span><button type="button" id="mQm" aria-label="Add an electron">−</button><span class="vsv" id="mQn"></span><button type="button" id="mQp" aria-label="Remove an electron">+</button></div>
+    </section>
+
+    <section aria-label="MO diagram">
+      <h2 class="sec-h"><span>MO diagram</span><span class="mhint">click a level to see its shape</span></h2>
+      <div id="mDiag"></div>
+    </section>
+
+    <section aria-label="Bonding">
+      <dl class="readout vread" id="mRead"></dl>
+      <div class="mnotes" id="mNotes"></div>
+    </section>
+
+    <section aria-label="Selected orbital">
+      <h2 class="sec-h">Selected orbital</h2>
+      <div class="borb" id="mSel"></div>
+    </section>
+
+    <section aria-label="Display" class="ctl">
+      <h2 class="sec-h" style="margin-bottom:0">Display</h2>
+      <div class="toggles">
+        <label class="sw" title="The two atomic orbitals that combine, drawn below the molecule"><input type="checkbox" id="mAos">Combining AOs</label>
+        <label class="sw"><input type="checkbox" id="mNode">Nodal plane</label>
+        <label class="sw"><input type="checkbox" id="mLbl">Labels</label>
+        <label class="sw"><input type="checkbox" id="mSpin">Auto-rotate</label>
+      </div>
+    </section>
+
+    <p class="note"><b>How it works.</b> When two atoms approach, each pair of matching atomic orbitals combines in two ways. <b>In phase</b> (ψ<sub>A</sub> + ψ<sub>B</sub>) gives a lower-energy <b>bonding</b> orbital with density between the nuclei. <b>Out of phase</b> (ψ<sub>A</sub> − ψ<sub>B</sub>) gives a higher-energy <b>antibonding</b> orbital (*) with a node between them. Electrons fill the molecular orbitals from the bottom up, two per orbital, spreading over equal-energy orbitals before pairing (Hund's rule). <b>Bond order</b> = ½ (bonding − antibonding electrons); 0 means no stable molecule.</p>
+    <p class="note"><b>Shapes</b> are one constant-value surface of ψ<sub>A</sub> ± ψ<sub>B</sub> built from hydrogen-like orbitals: pink is +, blue is −. The energy levels are schematic, showing order, not exact values.</p>
   </aside>
 </div>
 
@@ -5226,6 +5311,7 @@ function surfaceNets(F, nx, ny, nz, org, st) {
   }
   return {pos, idx};
 }
+window.SurfaceNets = surfaceNets;   // shared with the molecular-orbital page
 function isoParts(fn, box, st, color, opacity) {
   const [x0, x1, y0, y1, z0, z1] = box;
   const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil((y1 - y0) / st) + 1, nz = Math.ceil((z1 - z0) / st) + 1;
@@ -5517,6 +5603,276 @@ window.initVBT = function () {
 })();
 </script>
 <script>
+/* ===== molecular-orbital theory page ===== */
+(function () {
+const $ = s => document.querySelector(s);
+const KEY = 'aov.mo';
+const S = {el: 'O', q: 0, sel: 'pix', aos: true, node: true, lbl: true, spin: false};
+// element: [Z, valence electrons]
+const ELS = {H: [1, 1], He: [2, 2], Li: [3, 1], Be: [4, 2], B: [5, 3], C: [6, 4], N: [7, 5], O: [8, 6], F: [9, 7], Ne: [10, 8]};
+const NAMES = {
+  'H|1': 'hydrogen molecular ion', 'H|0': 'hydrogen', 'H|-1': 'hydride ion', 'He|1': 'helium dimer ion', 'He|0': 'helium dimer',
+  'O|1': 'dioxygenyl', 'O|0': 'oxygen', 'O|-1': 'superoxide', 'O|-2': 'peroxide', 'N|0': 'nitrogen', 'N|1': 'nitrogen cation',
+  'C|0': 'dicarbon', 'C|-2': 'acetylide', 'F|0': 'fluorine', 'B|0': 'diboron', 'Li|0': 'dilithium', 'Be|0': 'diberyllium', 'Ne|0': 'dineon'
+};
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const chg = q => (Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : '−');
+const SUPD = '⁰¹²³⁴⁵⁶⁷⁸⁹', sup = n => String(n).split('').map(d => SUPD[d]).join('');
+
+/* ---------- MO levels ---------- */
+// y = drawing height (smaller = higher energy). kind: s/p; bond: +1 bonding, −1 antibonding
+function levels(el) {
+  const small = el === 'H' || el === 'He';
+  if (small) return {small, ao: [{id: '1s', y: 250, n: 1}], mo: [
+    {id: 's1', name: 'σ1s', y: 320, deg: 1, bond: 1, from: '1s', shape: 'ss+'},
+    {id: 's1x', name: 'σ*1s', y: 180, deg: 1, bond: -1, from: '1s', shape: 'ss-'}]};
+  const mixed = ELS[el][0] <= 7;   // Li₂–N₂: 2s–2p mixing pushes σ2p above π2p
+  return {small, mixed, ao: [{id: '2s', y: 345, n: 1}, {id: '2p', y: 190, n: 3}], mo: [
+    {id: 's2', name: 'σ2s', y: 395, deg: 1, bond: 1, from: '2s', shape: 'ss+'},
+    {id: 's2x', name: 'σ*2s', y: 295, deg: 1, bond: -1, from: '2s', shape: 'ss-'},
+    {id: 'pi', name: 'π2p', y: mixed ? 232 : 214, deg: 2, bond: 1, from: '2p', shape: 'pi+'},
+    {id: 'sp', name: 'σ2p', y: mixed ? 206 : 240, deg: 1, bond: 1, from: '2p', shape: 'pp+'},
+    {id: 'pix', name: 'π*2p', y: 152, deg: 2, bond: -1, from: '2p', shape: 'pi-'},
+    {id: 'spx', name: 'σ*2p', y: 112, deg: 1, bond: -1, from: '2p', shape: 'pp-'}]};
+}
+function fill(el, q) {
+  const L = levels(el), mo = L.mo.slice().sort((a, b) => b.y - a.y);
+  let e = 2 * ELS[el][1] - q;
+  const occ = {};
+  for (const m of mo) {
+    const cap = 2 * m.deg, k = Math.max(0, Math.min(cap, e));
+    // Hund: spread over degenerate orbitals first
+    const slots = new Array(m.deg).fill(0);
+    for (let i = 0; i < k; i++) slots[i < m.deg ? i : i - m.deg]++;
+    occ[m.id] = slots; e -= k;
+  }
+  let b = 0, a = 0, unp = 0;
+  for (const m of L.mo) { const n = occ[m.id].reduce((x, y) => x + y, 0); if (m.bond > 0) b += n; else a += n; unp += occ[m.id].filter(x => x === 1).length; }
+  return {L, occ, bonding: b, anti: a, order: (b - a) / 2, unp, total: 2 * ELS[el][1] - q};
+}
+const maxQ = el => 2 * ELS[el][1];                       // all valence electrons gone
+const minQ = el => -(levels(el).mo.reduce((s, m) => s + 2 * m.deg, 0) - 2 * ELS[el][1]); // every level full
+
+/* ---------- 3-D: isosurface of ψA ± ψB ---------- */
+let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [], dirty = true;
+const Y = new THREE.Vector3(0, 1, 0);
+const D = 2.0, ISO = 0.085;
+const wS = (cx, a) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a);
+const wP = (cx, axis, sgn) => (x, y, z) => { const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / 0.5); };
+function moFns(shape, small) {
+  const a = small ? 0.42 : 0.55, xa = -D / 2, xb = D / 2, sg = shape.endsWith('+') ? 1 : -1;
+  let A, B;
+  if (shape.startsWith('ss')) { A = wS(xa, a); B = wS(xb, a); }
+  else if (shape.startsWith('pp')) { A = wP(xa, 0, 1); B = wP(xb, 0, -1); }   // + lobes facing each other
+  else { A = wP(xa, 1, 1); B = wP(xb, 1, 1); }                             // parallel p (π)
+  return {A, B, M: (x, y, z) => A(x, y, z) + sg * B(x, y, z), sg};
+}
+const PH_POS = 0xF08AA6, PH_NEG = 0x5FA4E6;
+function iso(fn, op) {
+  const st = 0.075, x0 = -D / 2 - 2.5, x1 = D / 2 + 2.5, e = 2.2;
+  const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil(2 * e / st) + 1, nz = ny;
+  const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz);
+  let k = 0;
+  for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
+    const f = fn(x0 + xi * st, -e + yi * st, -e + zi * st); P[k] = f - ISO; N[k] = -f - ISO;
+  }
+  const out = [];
+  for (const [F, col] of [[P, PH_POS], [N, PH_NEG]]) {
+    const {pos, idx} = window.SurfaceNets(F, nx, ny, nz, [x0, -e, -e], st);
+    if (!idx.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const solid = op >= 0.99;
+    out.push(new THREE.Mesh(g, new THREE.MeshPhongMaterial({color: col, transparent: !solid, opacity: op, depthWrite: solid, side: solid ? THREE.DoubleSide : THREE.FrontSide, shininess: 60, specular: 0x30343c})));
+  }
+  return out;
+}
+function initScene() {
+  viewer = $('#mViewer');
+  renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  viewer.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(34, 1, 0.05, 200);
+  scene.add(camera);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 3; controls.maxDistance = 40; controls.autoRotateSpeed = 1.4;
+  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f2a, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 1.5, 2); camera.add(key);
+  const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
+  const resize = () => { const w = viewer.clientWidth, hh = viewer.clientHeight; if (!w || !hh) return; renderer.setSize(w, hh, false); camera.aspect = w / hh; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(viewer); resize();
+  const loop = () => {
+    requestAnimationFrame(loop);
+    if ($('#mApp').hidden) return;
+    if (dirty) { dirty = false; build(); }
+    controls.autoRotate = S.spin;
+    controls.update(); renderer.render(scene, camera); placeLabels();
+  };
+  loop();
+}
+const aoOff = m => (m.shape.startsWith('pi') ? 4.7 : 3.3);   // π orbitals are tall: leave more room
+function fit() {
+  const off = aoOff(selMO()), d = (S.aos ? 11.8 + off : 11.5) / Math.min(1, (camera.aspect || 1) * 0.95);
+  controls.target.set(0, S.aos ? -off / 2 : 0, 0);
+  camera.position.copy(new THREE.Vector3(0.2, 0.42, 1).normalize().multiplyScalar(d).add(controls.target)); controls.update();
+}
+function dispose(o) { if (!o) return; scene.remove(o); o.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+function label(html, p, cls) { const el = document.createElement('div'); el.className = cls || 'blab'; el.innerHTML = html; $('#mLabels').appendChild(el); labs.push({el, v: p.clone()}); }
+function placeLabels() {
+  const w = viewer.clientWidth, hh = viewer.clientHeight, v = new THREE.Vector3();
+  for (const L of labs) {
+    v.copy(L.v).project(camera);
+    if (v.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.transform = `translate(${((v.x + 1) / 2 * w).toFixed(1)}px,${((1 - v.y) / 2 * hh).toFixed(1)}px) translate(-50%,-50%)`;
+  }
+}
+function selMO() { const L = levels(S.el); return L.mo.find(m => m.id === S.sel) || L.mo[0]; }
+function build() {
+  dispose(model); model = new THREE.Group(); scene.add(model);
+  $('#mLabels').innerHTML = ''; labs = [];
+  const L = levels(S.el), m = selMO(), f = moFns(m.shape, L.small);
+  const A = new THREE.Vector3(-D / 2, 0, 0), B = new THREE.Vector3(D / 2, 0, 0);
+  for (const P of [A, B]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.copy(P); nu.renderOrder = 3; model.add(nu); }
+  const ax = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-D / 2 - 2.6, 0, 0), new THREE.Vector3(D / 2 + 2.6, 0, 0)]), new THREE.LineBasicMaterial({color: 0x2A2F38, depthTest: false, transparent: true, opacity: 0.9}));
+  ax.renderOrder = 2; model.add(ax);
+  // the molecular orbital
+  for (const mesh of iso(f.M, S.aos ? 0.8 : 1)) model.add(mesh);
+  // the two atomic orbitals being combined, drawn as outlines beside the molecule
+  if (S.aos) {
+    const off = aoOff(m), spread = 1.3;
+    for (const [fn, side, sg] of [[f.A, -1, 1], [f.B, 1, f.sg]]) {
+      const g = new THREE.Group();
+      for (const mesh of iso((x, y, z) => sg * fn(x, y, z), 0.42)) g.add(mesh);
+      g.position.set(side * spread, -off, 0); model.add(g);
+    }
+    if (S.lbl) {
+      label(`${m.from}(A)`, new THREE.Vector3(-D / 2 - spread, -off - 1.5, 0), 'blab dim');
+      label(f.sg > 0 ? '+' : '−', new THREE.Vector3(0, -off, 0), 'mop');
+      label(`${f.sg > 0 ? '' : '−'}${m.from}(B)`, new THREE.Vector3(D / 2 + spread, -off - 1.5, 0), 'blab dim');
+      label('combine to give ↑', new THREE.Vector3(0, -off + 1.75, 0), 'blab dim');
+    }
+  }
+  if (S.node && m.bond < 0) { // nodal plane between the nuclei
+    const disk = new THREE.Mesh(new THREE.CircleGeometry(1.7, 48), new THREE.MeshBasicMaterial({color: 0xE3E6EB, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false}));
+    disk.rotation.y = Math.PI / 2; model.add(disk);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.68, 1.7, 64), new THREE.MeshBasicMaterial({color: 0xE3E6EB, transparent: true, opacity: 0.5, side: THREE.DoubleSide}));
+    ring.rotation.y = Math.PI / 2; model.add(ring);
+    if (S.lbl) label('nodal plane', new THREE.Vector3(0, 1.95, 0), 'blab dim');
+  }
+  if (S.lbl) {
+    label(esc(S.el), A.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
+    label(esc(S.el), B.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
+    label(m.name.replace('*', '<sup>*</sup>'), new THREE.Vector3(0, m.shape.startsWith('pi') ? 1.6 : 1.25, 0), m.bond > 0 ? 'bsig' : 'bsig pi');
+  }
+}
+
+/* ---------- MO diagram (SVG) ---------- */
+function diagram(r) {
+  const {L, occ} = r, W = 340, H = L.small ? 400 : 440;
+  const xA = 48, xB = W - 48, xM = W / 2, lw = 42, gap = 10;
+  const e1 = (x, y, n) => n === 2 ? `<text x="${x - 6}" y="${y - 4}" class="ma">↑</text><text x="${x + 6}" y="${y - 4}" class="ma">↓</text>` : n === 1 ? `<text x="${x}" y="${y - 4}" class="ma">↑</text>` : '';
+  const line = (x, y, w, cls) => `<line x1="${x - w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y}" class="${cls}"/>`;
+  const out = [];
+  out.push(`<line x1="14" y1="${H - 24}" x2="14" y2="56" class="max"/><path d="M10 62 L14 52 L18 62" class="max"/><text x="22" y="52" class="mlab">energy</text>`);
+  out.push(`<text x="${xA}" y="${H - 8}" class="mhead">${esc(S.el)} (A)</text><text x="${xM}" y="${H - 8}" class="mhead">${esc(S.el)}₂${S.q ? sup(Math.abs(S.q)).replace(/^¹$/, '') + (S.q > 0 ? '⁺' : '⁻') : ''}</text><text x="${xB}" y="${H - 8}" class="mhead">${esc(S.el)} (B)</text>`);
+  // atomic orbitals: electrons per atom (the ion's charge is shown on the molecule only)
+  const per = ELS[S.el][1], aoE = L.small ? [per] : [Math.min(2, per), Math.max(0, per - 2)];
+  L.ao.forEach((ao, i) => {
+    for (const x of [xA, xB]) {
+      const n = ao.n, tot = aoE[i];
+      for (let j = 0; j < n; j++) {
+        const cx = x + (j - (n - 1) / 2) * (lw * 0.62 + 4);
+        out.push(line(cx, ao.y, lw * 0.62, 'mao'));
+        const filled = n === 1 ? tot : (tot > j ? 1 : 0) + (tot > j + 3 ? 1 : 0);
+        out.push(e1(cx, ao.y, filled));
+      }
+      out.push(`<text x="${x}" y="${ao.y + 16}" class="mlab">${ao.id}</text>`);
+    }
+  });
+  // connectors from AOs to MOs
+  for (const m of L.mo) {
+    const ao = L.ao.find(a => a.id === m.from);
+    const half = m.deg === 2 ? lw + gap / 2 : lw / 2;
+    out.push(`<line x1="${xA + (ao.n === 3 ? lw * 1.1 : lw * 0.36)}" y1="${ao.y}" x2="${xM - half}" y2="${m.y}" class="mcon"/>`);
+    out.push(`<line x1="${xB - (ao.n === 3 ? lw * 1.1 : lw * 0.36)}" y1="${ao.y}" x2="${xM + half}" y2="${m.y}" class="mcon"/>`);
+  }
+  // molecular orbitals
+  for (const m of L.mo) {
+    const on = m.id === S.sel, cls = (m.bond > 0 ? 'mmo b' : 'mmo a') + (on ? ' on' : '');
+    const xs = m.deg === 2 ? [xM - (lw + gap) / 2, xM + (lw + gap) / 2] : [xM];
+    out.push(`<g class="mlev${on ? ' on' : ''}" data-id="${m.id}" tabindex="0" role="button" aria-label="${m.name}">`);
+    out.push(`<rect x="${xM - lw - gap - 30}" y="${m.y - 18}" width="${2 * lw + 2 * gap + 60}" height="24" class="mhit"/>`);
+    xs.forEach((x, j) => { out.push(line(x, m.y, lw, cls)); out.push(e1(x, m.y, occ[m.id][j])); });
+    out.push(`<text x="${xM + (m.deg === 2 ? lw + gap : lw / 2 + 8) + 6}" y="${m.y + 4}" class="mname${m.bond < 0 ? ' x' : ''}" text-anchor="start">${m.name.replace('*', '<tspan class="mst">*</tspan>')}</text>`);
+    out.push('</g>');
+  }
+  if (!L.small) out.push(`<text x="${W - 6}" y="52" class="mlab" text-anchor="end" style="text-anchor:end">1s core (KK) not shown</text>`);
+  return `<svg viewBox="0 0 ${W} ${H}" class="mdiag" role="img" aria-label="MO energy diagram">${out.join('')}</svg>`;
+}
+
+/* ---------- panel ---------- */
+function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} if (!ELS[S.el]) S.el = 'O'; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function frac(x) { return Number.isInteger(x) ? String(x) : (Math.floor(x) || '') + '½'; }
+function render(reset) {
+  const r = fill(S.el, S.q), L = r.L;
+  if (!L.mo.some(m => m.id === S.sel)) S.sel = L.small ? (S.sel.endsWith('x') ? 's1x' : 's1') : (S.sel === 's1x' ? 'pix' : 'pi');
+  $('#mEls').innerHTML = Object.keys(ELS).map(e => `<button type="button" data-e="${e}" aria-pressed="${e === S.el}"><b>${e}<sub>2</sub></b></button>`).join('');
+  $('#mQn').textContent = S.q ? chg(S.q) : '0';
+  $('#mQm').disabled = S.q <= minQ(S.el) || S.q <= -2; $('#mQp').disabled = S.q >= Math.min(2, maxQ(S.el) - 1);
+  $('#mDiag').innerHTML = diagram(r);
+  const formula = `${esc(S.el)}<sub>2</sub>${S.q ? `<sup>${chg(S.q)}</sup>` : ''}`;
+  const name = NAMES[S.el + '|' + S.q];
+  // configuration
+  const order = L.mo.slice().sort((a, b) => b.y - a.y);
+  const conf = (L.small ? '' : 'KK ') + order.map(m => { const n = r.occ[m.id].reduce((a, b) => a + b, 0); return n ? `(${m.name})${sup(n)}` : ''; }).filter(Boolean).join(' ');
+  const bo = r.order;
+  const notes = [];
+  if (bo <= 0) notes.push(`Bond order ${frac(bo)}: as many electrons in antibonding as in bonding orbitals, so no net bond. ${formula} isn't a stable molecule.`);
+  if (S.el === 'O' && S.q === 0) notes.push('Two unpaired electrons in π*2p make O<sub>2</sub> paramagnetic: liquid oxygen sticks to a magnet. The Lewis structure O=O, with every electron paired, can\'t explain that.');
+  if (!L.small && L.mixed) notes.push('For Li<sub>2</sub>–N<sub>2</sub>, 2s and 2p mixing pushes σ2p above π2p.');
+  if (!L.small && !L.mixed) notes.push('For O<sub>2</sub>–Ne<sub>2</sub>, the 2s–2p gap is large, so there is little mixing and σ2p lies below π2p.');
+  const rows = [
+    ['Electrons', `${r.total}${L.small ? '' : ' valence'}<small>${r.bonding} in bonding MOs, ${r.anti} in antibonding</small>`],
+    ['Bond order', `<b class="key">${frac(bo)}</b><small>½ (bonding − antibonding) = ½ (${r.bonding} − ${r.anti})</small>`],
+    ['Unpaired', `${r.unp} → ${r.unp ? '<b>paramagnetic</b> (attracted by a magnet)' : 'diamagnetic'}`],
+    ['Configuration', `<span class="mconf">${conf}</span>`]
+  ];
+  $('#mRead').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('#mNotes').innerHTML = notes.map(n => `<p>${n}</p>`).join('');
+  // selected MO
+  const m = selMO(), n = r.occ[m.id].reduce((a, b) => a + b, 0), f = m.shape.endsWith('+') ? '+' : '−';
+  const kind = m.shape.startsWith('pi') ? 'π' : 'σ';
+  $('#mSel').innerHTML = `<b>${m.name}</b> <span class="${m.bond > 0 ? 'mb' : 'mx'}">${m.bond > 0 ? 'bonding' : 'antibonding'}</span>
+    <p class="bform">ψ = ${m.from}(A) ${f} ${m.from}(B)</p>
+    <p>${m.bond > 0 ? `In phase: the two waves add, so electron density builds up <b>between</b> the nuclei and holds them together. Energy is lower than the atomic orbitals.` : `Out of phase: the waves cancel midway, leaving a <b>nodal plane</b> between the nuclei. Electrons here pull the atoms apart. Energy is higher than the atomic orbitals.`}
+    ${kind === 'σ' ? 'σ: symmetric around the bond axis.' : 'π: made from side-on p orbitals; density above and below the axis, none on it.'}${m.deg === 2 ? ' There are two of these, at 90° to each other, with the same energy.' : ''}</p>
+    <p class="bmut">Holds ${n} of ${2 * m.deg} possible electron${m.deg * 2 === 1 ? '' : 's'}.</p>`;
+  $('#mTitle').innerHTML = `${formula}${name ? ` <span class="bh">${esc(name)}</span>` : ''}`;
+  $('#mSub').innerHTML = `bond order <b>${frac(bo)}</b> · ${r.unp ? `<b>${r.unp}</b> unpaired · paramagnetic` : 'diamagnetic'} · showing <b>${m.name}</b>`;
+  for (const [id, k] of [['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).checked = S[k];
+  dirty = true;
+  if (reset) fit();
+}
+function bind() {
+  $('#mEls').addEventListener('click', e => { const b = e.target.closest('button[data-e]'); if (!b) return; S.el = b.dataset.e; S.q = 0; save(); render(false); });
+  $('#mQm').addEventListener('click', () => { S.q--; save(); render(false); });
+  $('#mQp').addEventListener('click', () => { S.q++; save(); render(false); });
+  const pick = e => { const g = e.target.closest('[data-id]'); if (!g) return; const was = aoOff(selMO()); S.sel = g.dataset.id; save(); render(aoOff(selMO()) !== was && S.aos); };
+  $('#mDiag').addEventListener('click', pick);
+  $('#mDiag').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); } });
+  for (const [id, k] of [['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k === 'aos') { fit(); } dirty = true; });
+  $('#mReset').addEventListener('click', fit);
+}
+window.initMO = function () {
+  if (inited) { dirty = true; return; }
+  inited = true; load(); initScene(); bind(); render(true);
+};
+})();
+</script>
+<script>
 /* ---------- collapsible side panel (shared by all tools) ---------- */
 (function () {
   const KEY = 'aov.sideOff';
@@ -5591,7 +5947,10 @@ window.initVBT = function () {
        tags: ['AXₙEₘ', 'Bond angles', 'Polarity']},
       {id: 'vbt', app: '#bApp', nav: 'Valence bond theory', title: 'Valence Bond Theory', init: () => window.initVBT(),
        desc: 'Watch s and p orbitals mix into sp, sp², sp³, sp³d and sp³d² hybrids step by step, and bring two atoms together to form σ and π bonds.',
-       tags: ['Hybridization', 'Promotion', 'σ and π overlap']}
+       tags: ['Hybridization', 'Promotion', 'σ and π overlap']},
+      {id: 'mo', app: '#mApp', nav: 'MO theory', title: 'Molecular Orbital Theory', init: () => window.initMO(),
+       desc: 'MO energy diagrams for H₂ to Ne₂ and their ions: fill the levels, read off bond order and magnetism, and see each bonding and antibonding orbital in 3D.',
+       tags: ['Bond order', 'Paramagnetism', 'Bonding / antibonding']}
     ]},
     {name: 'Thermochemistry', blurb: 'Measuring the heat of a reaction', pages: [
       {id: 'calorimeter', app: '#cApp', nav: 'Bomb calorimeter', title: 'Bomb Calorimeter', init: () => window.initCalorimeter(),
