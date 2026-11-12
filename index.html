@@ -1196,7 +1196,7 @@ body.side-off .app > .panel{display:none}
     <section aria-label="Display" class="ctl">
       <h2 class="sec-h" style="margin-bottom:0">Display</h2>
       <div class="slider">
-        <label for="bLobe"><span>Lobe length</span><output id="bLobeOut"></output></label>
+        <label for="bLobe" title="Stretches every lobe along its own direction; the width stays the same"><span>Lobe length</span><output id="bLobeOut"></output></label>
         <input type="range" id="bLobe" min="0.55" max="1.6" step="0.01">
       </div>
       <div class="slider">
@@ -4972,7 +4972,8 @@ const QW = 1.0;   // lobe width comes from S.pow, lobe size from S.lobe
 const PH_POS = '#F08AA6', PH_NEG = '#5FA4E6';
 const phaseCols = color => S.col === 'phase' ? [new THREE.Color(PH_POS), new THREE.Color(PH_NEG)] : [new THREE.Color(color), shade(color, 0.42)];
 // s-rich orbitals are drawn smaller than p, d or hybrid ones
-const Lof = (c, big) => S.lobe * (big || 1.85) * (0.6 + 0.4 * Math.min(1, (1 - c[0] * c[0]) * 4));
+// s-rich orbitals are drawn smaller; only directional (p-like) character gets longer with the length slider
+const Lof = (c, big) => { const pc = Math.min(1, (1 - c[0] * c[0]) * 4); return (big || 1.85) * (0.6 + 0.4 * pc) * (1 + (S.lobe - 1) * pc); };
 function orbital(c, L, color, opts = {}) {
   const base = UNIT.attributes.position, n = base.count;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), fs = new Float32Array(n);
@@ -4980,10 +4981,11 @@ function orbital(c, L, color, opts = {}) {
   // a hybrid gets one big lobe and a visible small back lobe; a p orbital two equal lobes
   let mp = 1e-9, mn = 1e-9;
   for (let i = 0; i < n; i++) { const f = fs[i] = V.evalF(c, toC(base.getX(i), base.getY(i), base.getZ(i))); if (f > mp) mp = f; if (-f > mn) mn = -f; }
-  const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, QW), kn = Math.pow(mn / fmax, QW);
+  // lobe width ≈ L/√pw, so stretching a lobe by S.lobe and raising pw by S.lobe² keeps its width while it gets longer
+  const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, QW), kn = Math.pow(mn / fmax, QW), pw = S.pow * S.lobe * S.lobe;
   const [cp, cn] = phaseCols(color);
   for (let i = 0; i < n; i++) {
-    const f = fs[i], r = f >= 0 ? L * kp * Math.pow(f / mp, S.pow) : L * kn * Math.pow(-f / mn, S.pow);
+    const f = fs[i], r = f >= 0 ? L * kp * Math.pow(f / mp, pw) : L * kn * Math.pow(-f / mn, pw);
     pos[i * 3] = base.getX(i) * r; pos[i * 3 + 1] = base.getY(i) * r; pos[i * 3 + 2] = base.getZ(i) * r;
     const cc = f >= 0 ? cp : cn;
     col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
@@ -5093,7 +5095,7 @@ function buildHyb() {
       model.add(nucleus(at, 0.11));
       if (!a) return;
       if (partner === 'H') {
-        model.add(orbital([1, 0, 0, 0, 0, 0], 0.55 * S.lobe, COLS.lig, {at, opacity: op(id, 0.5)}));
+        model.add(orbital([1, 0, 0, 0, 0, 0], 0.55, COLS.lig, {at, opacity: op(id, 0.5)}));
         if (a === 1) { electrons(model, at.clone().addScaledVector(u, -0.3), u, 1); if (S.lbl) label('H 1s', at.clone().addScaledVector(u, 0.85)); }
       } else {
         const rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), u.clone().negate());
@@ -5128,7 +5130,7 @@ function buildOv() {
   model.add(nucleus(A)); model.add(nucleus(B));
   const near = d < T.r0 + 0.35;
   // add an orbital with an id; returns true if it is drawn at full strength (so its electrons and labels show)
-  const add = (id, c, sc, col, at, base) => { const a = vis(id); if (!a) return false; model.add(orbital(c, sc * S.lobe, col, {at, opacity: op(id, base || 0.55)})); return a === 1; };
+  const add = (id, c, sc, col, at, base) => { const a = vis(id); if (!a) return false; model.add(orbital(c, c[0] > 0.99 ? sc : sc * S.lobe, col, {at, opacity: op(id, base || 0.55)})); return a === 1; };
   const e1 = (on, p, dir) => { if (on) electrons(model, p, dir || Y, 1); };
   const pxP = [0, 1, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0], sC = [1, 0, 0, 0, 0, 0];
   const lab = (on, t, p) => { if (on && S.lbl) label(t, p); };
@@ -5187,12 +5189,12 @@ function buildOv() {
 /* ---------- bond view: isosurface of ψA + ψB (surface nets) ---------- */
 // wavefunctions in screen coordinates: bond axis = x, "up" = y; nucleus at (cx, 0, 0)
 const AP = 0.5, AS = 0.42;
-// S.lobe scales how far each orbital reaches (radial extent); the peak value stays the same, so shapes scale whole
-const wfS = (cx) => { const a = AS * S.lobe; return (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a); };
-const wfP = (cx, axis, sgn) => { const a = AP * S.lobe, k = 1.732 / S.lobe; return (x, y, z) => { const dx = x - cx, r = Math.hypot(dx, y, z), q = axis === 0 ? dx : axis === 1 ? y : z; return sgn * k * q * Math.exp(-r / a); }; };
+// S.lobe stretches each p orbital / hybrid along its own axis only (longer lobes, same width); 1s spheres don't change
+const wfS = (cx) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / AS);
+const wfP = (cx, axis, sgn) => { const s = S.lobe; return (x, y, z) => { const v = [(x - cx), y, z]; v[axis] /= s; const r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / AP); }; };
 // hybrid with s fraction cs² pointing along sgn·x: e^{-r/a}(cs·r + cp·√3·dx)
 const AH = 0.36; // hybrids drawn a little tighter so the σ core doesn't hide the π clouds
-const wfH = (cx, cs, sgn) => { const cp = Math.sqrt(1 - cs * cs), a = AH * S.lobe, k = 1.25 / S.lobe; return (x, y, z) => { const dx = x - cx, r = Math.hypot(dx, y, z); return k * Math.exp(-r / a) * (cs * r + cp * 1.732 * sgn * dx); }; };
+const wfH = (cx, cs, sgn) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; return (x, y, z) => { const dx = (x - cx) / s, r = Math.hypot(dx, y, z); return 1.25 * Math.exp(-r / AH) * (cs * r + cp * 1.732 * sgn * dx); }; };
 const ISO = 0.21;
 function surfaceNets(F, nx, ny, nz, org, st) {
   const cx = nx - 1, cy = ny - 1, cz = nz - 1, vid = new Int32Array(cx * cy * cz).fill(-1);
