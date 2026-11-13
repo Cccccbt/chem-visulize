@@ -1331,15 +1331,6 @@ body.side-off .app > .panel{display:none}
 
     <section aria-label="Display" class="ctl">
       <h2 class="sec-h" style="margin-bottom:0">Display</h2>
-      <div class="slider">
-        <label for="bLobe" title="Stretches every lobe along its own direction; the width stays the same"><span>Lobe length</span><output id="bLobeOut"></output></label>
-        <input type="range" id="bLobe" min="0.55" max="1.6" step="0.01">
-      </div>
-      <div class="slider">
-        <label for="bPow"><span>Lobe width</span><output id="bPowOut"></output></label>
-        <input type="range" id="bPow" min="1.8" max="5" step="0.05" title="Left: slim lobes · right: round lobes">
-      </div>
-      <button type="button" class="ptbtn" id="bLobeReset" style="align-self:flex-start">Reset lobe shape</button>
       <div class="seg" role="radiogroup" aria-label="Colour" id="bCol">
         <button type="button" role="radio" data-c="phase" title="+ lobes pink, − lobes blue, as in most textbooks">Colour by phase (+/−)</button>
         <button type="button" role="radio" data-c="type" title="s gold, p blue, d green, hybrids violet; − lobe darker">Colour by orbital type</button>
@@ -5109,7 +5100,7 @@ const Y = new THREE.Vector3(0, 1, 0);
 const toT = v => new THREE.Vector3(v[0], v[2], -v[1]);
 const toC = (x, y, z) => [x, -z, y];
 
-function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} }
+function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} S.lobe = 1; S.pow = 2.2; }   // lobe shape is fixed
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 const atom = () => { const a = V.ATOMS[S.set]; if (S.ai >= a.length) S.ai = 0; return a[S.ai]; };
 
@@ -5178,7 +5169,7 @@ function orbital(c, L, color, opts = {}) {
   for (let i = 0; i < n; i++) { const f = fs[i] = V.evalF(c, toC(base.getX(i), base.getY(i), base.getZ(i))); if (f > mp) mp = f; if (-f > mn) mn = -f; }
   // lobe width ≈ L/√pw, so stretching a lobe by S.lobe and raising pw by S.lobe² keeps its width while it gets longer
   const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, QW), kn = Math.pow(mn / fmax, QW), pw = S.pow * S.lobe * S.lobe;
-  const [cp, cn] = phaseCols(color);
+  const [cp, cn] = opts.cols || phaseCols(color);
   // p orbitals and hybrids (one lobe per phase): shape each lobe by the angle from its own axis, so a hybrid's big
   // lobe is the same teardrop as a p lobe, just longer. Pure d orbitals (several lobes per phase) keep the amplitude.
   const oneLobe = Math.abs(c[1]) + Math.abs(c[2]) + Math.abs(c[3]) > 1e-6;   // has p character (a pure s stays a sphere)
@@ -5415,6 +5406,9 @@ function outerHybrids(k, d) {
     out.push({P: new THREE.Vector3(d / 2, 0, 0), u: toT(V.lobeDir(flip(c)).dir).normalize()}); });
   return out;
 }
+const TB_S = '#F4A6C6', TB_P = '#8CCFEA';   // textbook overlap pictures: s pink, p light blue
+// side-on π: p lobes drawn out a little along the bond so the two merge into one curved band above and one below
+const wfPb = cx => (x, y, z) => { const X = (x - cx) / 1.3, r = Math.hypot(X, y, z); return 1.732 * y * Math.exp(-r / AP); };
 const ISO = 0.21;
 function surfaceNets(F, nx, ny, nz, org, st) {
   const cx = nx - 1, cy = ny - 1, cz = nz - 1, vid = new Int32Array(cx * cy * cz).fill(-1);
@@ -5447,7 +5441,7 @@ function surfaceNets(F, nx, ny, nz, org, st) {
   return {pos, idx};
 }
 window.SurfaceNets = surfaceNets;   // shared with the molecular-orbital page
-function isoParts(fn, box, st, color, opacity) {
+function isoParts(fn, box, st, color, opacity, same) {
   const [x0, x1, y0, y1, z0, z1] = box;
   const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil((y1 - y0) / st) + 1, nz = Math.ceil((z1 - z0) / st) + 1;
   const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz), iso = ISO;
@@ -5458,7 +5452,7 @@ function isoParts(fn, box, st, color, opacity) {
   }
   const out = [];
   // bond surfaces are always coloured by bond type (σ violet, π pink) so σ and π stay apart; the − phase is darker
-  const c1 = new THREE.Color(color), c2 = shade(color, 0.5);
+  const c1 = new THREE.Color(color), c2 = same ? c1 : shade(color, 0.5);
   for (const [F, col] of [[P, c1], [N, c2]]) {
     const {pos, idx} = surfaceNets(F, nx, ny, nz, [x0, y0, z0], st);
     if (!idx.length) continue;
@@ -5477,7 +5471,7 @@ function bondParts() { // [{id, name, role, fn, color}]
   if (k === 'ss') return [sig(add(wfS2(xa), wfS2(xb)), 'σ bond <small>1s + 1s</small>', 'the two 1s spheres merge into one cloud around the axis, thickest between the nuclei')];
   if (k === 'sp') return [sig(add(wfS(xa), wfP(xb, 0, -1)), 'σ bond <small>1s + p</small>', 'the 1s merges with the p lobe that points at it; the far p lobe (opposite phase) stays behind')];
   if (k === 'pp') return [sig(add(wfP(xa, 0, 1), wfP(xb, 0, -1)), 'σ bond <small>p + p</small>', 'the facing lobes merge into one fat lobe on the axis between the nuclei; the outer lobes stay')];
-  if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI}];
+  if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfPb(xa), wfPb(xb)), color: TB_P}];
   const cs = k === 'db' ? Math.sqrt(1 / 3) : Math.sqrt(1 / 2);
   const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${k === 'db' ? 'sp² + sp²' : 'sp + sp'}</small>`, 'the hybrids pointing at each other merge on the axis')];
   // C–H σ bonds: each outer hybrid + an H 1s, so the whole σ skeleton (H–C≡C–H, or the flat H₂C=CH₂) shows
@@ -5505,12 +5499,31 @@ function buildBond() {
       if (S.lbl) label('H', H.clone().add(new THREE.Vector3(0, -0.4, 0)), 'blab dim');
     }
   }
-  for (const part of bondParts()) {
+  if (S.type === 'pi' && vis('π')) {   // the nodal plane: the plane of the bond axis, where the π density is zero
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(d + 4.2, 3.2), new THREE.MeshBasicMaterial({color: 0xBDF5E3, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide}));
+    pl.rotation.x = -Math.PI / 2; model.add(pl);
+    if (S.lbl) label('nodal plane', new THREE.Vector3(-d / 2 - 1.9, 0.12, 1.4), 'blab dim');
+  }
+  // s–s, s–p, p–p end-on: drawn as in textbooks — the two atomic orbitals, unchanged in shape, overlapping
+  // (s pink, p blue; the overlap shows as the deeper colour where they cross). Only their distance changes.
+  if (S.type === 'ss' || S.type === 'sp' || S.type === 'pp') {
+    const a = vis('σ');
+    if (a) {
+      const o = a === 1 ? 0.5 : a, sC = [1, 0, 0, 0, 0, 0], one = c => [new THREE.Color(c), new THREE.Color(c)];
+      // end-on p: the lobe facing the other atom drawn big, the far lobe small, as in the textbook picture
+      const cs = 0.5, cpp = Math.sqrt(1 - cs * cs), pF = [cs, cpp, 0, 0, 0, 0], pB = [cs, -cpp, 0, 0, 0, 0], pPlain = [0, -1, 0, 0, 0, 0];
+      if (S.type === 'ss') { model.add(orbital(sC, 0.95, TB_S, {at: A, opacity: o, cols: one(TB_S)})); model.add(orbital(sC, 0.95, TB_S, {at: B, opacity: o, cols: one(TB_S)})); }
+      else if (S.type === 'sp') { model.add(orbital(sC, 0.95, TB_S, {at: A, opacity: o, cols: one(TB_S)})); model.add(orbital(pPlain, 1.4, TB_P, {at: B, opacity: o, cols: one(TB_P)})); }
+      else { model.add(orbital(pF, 1.45, TB_P, {at: A, opacity: o, cols: one(TB_P)})); model.add(orbital(pB, 1.45, TB_P, {at: B, opacity: o, cols: one(TB_P)})); }
+      if (a === 1 && near) { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
+    }
+  }
+  else for (const part of bondParts()) {
     const a = vis(part.id);
     if (!a) continue;
     // in double/triple bonds the π clouds are a little see-through so the σ core stays visible
     const multi = S.type === 'db' || S.type === 'tb';
-    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? (multi && part.id[0] === 'π' ? 0.72 : 1) : a)) model.add(m);
+    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? (multi && part.id[0] === 'π' ? 0.72 : S.type === 'pi' ? 0.85 : 1) : a, S.type === 'pi')) model.add(m);
     if (a !== 1 || !near) continue;
     if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
     const pr = S.type === 'pi' ? [1.35, 0.85] : [1.75, 1.0];   // the double/triple-bond π sausages sit further out
@@ -5681,8 +5694,6 @@ function render(reset) {
   document.querySelectorAll('#bMode button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.m === S.mode)));
   $('#bHyb').hidden = !hyb; $('#bOv').hidden = hyb;
   for (const [id, k] of [['#bSpread', 'spread'], ['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).checked = S[k];
-  $('#bLobe').value = String(S.lobe); $('#bLobeOut').textContent = `${S.lobe.toFixed(2)}×`;
-  $('#bPow').value = String(6.2 - S.pow); $('#bPowOut').textContent = S.pow > 3.4 ? 'slim' : S.pow > 2.4 ? 'medium' : S.pow > 1.6 ? 'full' : 'round';
   document.querySelectorAll('#bCol button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.c === S.col)));
   $('#bSpreadW').hidden = S.mode !== 'hyb';
   const bv = S.mode === 'ov' && S.ovView === 'bond';
@@ -5727,10 +5738,6 @@ function bind() {
   $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.ovView = b.dataset.v; S.solo = null; save(); render(false); });
   $('#bPlay').addEventListener('click', () => { dCur = 4.4; dGoal = TYPES[S.type].r0; S.d = dGoal; $('#bDist').value = String(dGoal); dirty = true; save(); });
   for (const [id, k] of [['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); dirty = true; });
-  $('#bLobe').addEventListener('input', e => { S.lobe = +e.target.value; $('#bLobeOut').textContent = `${S.lobe.toFixed(2)}×`; dragging = true; dirty = true; });
-  $('#bPow').addEventListener('input', e => { S.pow = 6.2 - +e.target.value; $('#bPowOut').textContent = S.pow > 3.4 ? 'slim' : S.pow > 2.4 ? 'medium' : S.pow > 1.6 ? 'full' : 'round'; dragging = true; dirty = true; });
-  for (const id of ['#bLobe', '#bPow']) $(id).addEventListener('change', () => { dragging = false; dirty = true; save(); });
-  $('#bLobeReset').addEventListener('click', () => { S.lobe = 1; S.pow = 2.2; save(); render(false); });
   $('#bSpread').addEventListener('change', e => { S.spread = e.target.checked; save(); camGoal = wantDist(); dirty = true; });
   $('#bCol').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.col = b.dataset.c; save(); render(false); });
   $('#bReset').addEventListener('click', fit);
