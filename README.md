@@ -16,6 +16,7 @@ page (`index.html` or `#home`) lists them all.
 | Chemical bonding | Valence Bond Theory — promotion and hybridization step by step with orbital diagrams; σ and π overlap with an energy curve | `#vbt` |
 | Chemical bonding | Molecular Orbital Theory — MO diagrams for H₂–Ne₂ and ions with bond order and magnetism; 3D bonding/antibonding orbitals | `#mo` |
 | Thermochemistry | Bomb Calorimeter — animated cutaway with q = C·ΔT → ΔU → ΔH | `#calorimeter` |
+| Reference | Exam Appendix — General Chemistry II constants, equations and Kₐ tables | `#appendix` |
 
 ### Adding a tool
 
