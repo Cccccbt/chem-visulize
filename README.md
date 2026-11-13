@@ -1,4 +1,4 @@
-# chem-visulize
+# chem-visualize
 
 Interactive chemistry visualizations in the browser.
 
@@ -34,5 +34,5 @@ python3 -m http.server 8000
 ### Deploy
 
 Served by GitHub Pages from the `main` branch root:
-https://cccccbt.github.io/chem-visulize/
+https://cccccbt.github.io/chem-visualize/
 
