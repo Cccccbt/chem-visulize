@@ -5128,7 +5128,7 @@ function initScene() {
   scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1f2a, 0.75));
   const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(1, 1.5, 2); camera.add(key);
   const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
-  UNIT = new THREE.SphereGeometry(1, 96, 64);
+  UNIT = new THREE.SphereGeometry(1, 128, 96);
   const resize = () => { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   new ResizeObserver(resize).observe(viewer); resize();
   const loop = now => {
@@ -5166,6 +5166,9 @@ const phaseCols = color => S.col === 'phase' ? [new THREE.Color(PH_POS), new THR
 // s-rich orbitals are drawn smaller than p, d or hybrid ones
 // s-rich orbitals are drawn smaller; only directional (p-like) character gets longer with the length slider
 const Lof = (c, big) => { const pc = Math.min(1, (1 - c[0] * c[0]) * 4); return (big || 1.85) * (0.6 + 0.4 * pc) * (1 + (S.lobe - 1) * pc); };
+// textbook teardrop: each lobe comes to a point at the nucleus and is round at the far end
+// (cut the sharpened amplitude at TC, so the lobe leaves the nucleus as a cone, then fatten the far end with TQ < 1)
+const TC = 0.3, TQ = 0.6, TEAR = t => (t <= TC ? 0 : Math.pow((t - TC) / (1 - TC), TQ));
 function orbital(c, L, color, opts = {}) {
   const base = UNIT.attributes.position, n = base.count;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), fs = new Float32Array(n);
@@ -5176,8 +5179,16 @@ function orbital(c, L, color, opts = {}) {
   // lobe width ≈ L/√pw, so stretching a lobe by S.lobe and raising pw by S.lobe² keeps its width while it gets longer
   const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, QW), kn = Math.pow(mn / fmax, QW), pw = S.pow * S.lobe * S.lobe;
   const [cp, cn] = phaseCols(color);
+  // p orbitals and hybrids (one lobe per phase): shape each lobe by the angle from its own axis, so a hybrid's big
+  // lobe is the same teardrop as a p lobe, just longer. Pure d orbitals (several lobes per phase) keep the amplitude.
+  const oneLobe = Math.abs(c[1]) + Math.abs(c[2]) + Math.abs(c[3]) > 1e-6;   // has p character (a pure s stays a sphere)
+  const dp = oneLobe ? V.lobeDir(c).dir : null, dn = oneLobe ? V.lobeDir(c.map(x => -x)).dir : null;
   for (let i = 0; i < n; i++) {
-    const f = fs[i], r = f >= 0 ? L * kp * Math.pow(f / mp, pw) : L * kn * Math.pow(-f / mn, pw);
+    const f = fs[i];
+    let tp, tn;
+    if (oneLobe) { const v = toC(base.getX(i), base.getY(i), base.getZ(i)), w = f >= 0 ? dp : dn, cs = Math.max(0, v[0] * w[0] + v[1] * w[1] + v[2] * w[2]); tp = tn = Math.pow(cs, pw); }
+    else { tp = Math.pow(f / mp, pw); tn = Math.pow(-f / mn, pw); }
+    const r = f >= 0 ? L * kp * TEAR(tp) : L * kn * TEAR(tn);
     pos[i * 3] = base.getX(i) * r; pos[i * 3 + 1] = base.getY(i) * r; pos[i * 3 + 2] = base.getZ(i) * r;
     const cc = f >= 0 ? cp : cn;
     col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
@@ -5389,6 +5400,21 @@ const wfP = (cx, axis, sgn) => { const s = S.lobe; return (x, y, z) => { const v
 // hybrid with s fraction cs² pointing along sgn·x: e^{-r/a}(cs·r + cp·√3·dx)
 const AH = 0.36; // hybrids drawn a little tighter so the σ core doesn't hide the π clouds
 const wfH = (cx, cs, sgn) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; return (x, y, z) => { const dx = (x - cx) / s, r = Math.hypot(dx, y, z); return 1.25 * Math.exp(-r / AH) * (cs * r + cp * 1.732 * sgn * dx); }; };
+// π lobes for double/triple bonds, textbook style: a sausage held off the bond axis (≈0.5–1.45 out) and drawn out along it, so the two
+// perpendicular π bonds of a triple bond stay four separate lobes around a thin σ core instead of merging into a ring
+const wfPi = (cx, axis, sgn) => { const s = S.lobe; return (x, y, z) => { const v = [(x - cx) / 1.45, y, z]; v[axis] /= s; const r = Math.hypot(v[0], v[1], v[2]) + 1e-9, a = v[axis]; return sgn * 2.5 * a * a * a / r * Math.exp(-r / 0.45); }; };
+// a hybrid pointing along any unit vector u from P (for the C–H bonds), and an H 1s at P
+const wfHu = (P, u, cs) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; return (x, y, z) => { const X = x - P.x, Y = y - P.y, Z = z - P.z, al = X * u.x + Y * u.y + Z * u.z, pr = Math.hypot(X - al * u.x, Y - al * u.y, Z - al * u.z), da = al / s, r = Math.hypot(da, pr); return 1.25 * Math.exp(-r / AH) * (cs * r + cp * 1.732 * da); }; };
+const wfSH = P => (x, y, z) => 0.5 * Math.exp(-Math.hypot(x - P.x, y - P.y, z - P.z) / 0.42);
+const CH = 1.55;   // C–H distance used for the outer atoms
+// the outer hybrids of each carbon (the ones not pointing at the other carbon): [{P, u}] in screen coordinates
+function outerHybrids(k, d) {
+  const hy = k === 'db' ? V.HYB.sp2 : V.HYB.sp, flip = c => c.map((x, i) => (i === 1 ? -x : x)), out = [];
+  hy.forEach((c, i) => { if (i === 0) return;
+    out.push({P: new THREE.Vector3(-d / 2, 0, 0), u: toT(V.lobeDir(c).dir).normalize()});
+    out.push({P: new THREE.Vector3(d / 2, 0, 0), u: toT(V.lobeDir(flip(c)).dir).normalize()}); });
+  return out;
+}
 const ISO = 0.21;
 function surfaceNets(F, nx, ny, nz, org, st) {
   const cx = nx - 1, cy = ny - 1, cz = nz - 1, vid = new Int32Array(cx * cy * cz).fill(-1);
@@ -5454,8 +5480,11 @@ function bondParts() { // [{id, name, role, fn, color}]
   if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI}];
   const cs = k === 'db' ? Math.sqrt(1 / 3) : Math.sqrt(1 / 2);
   const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${k === 'db' ? 'sp² + sp²' : 'sp + sp'}</small>`, 'the hybrids pointing at each other merge on the axis')];
-  out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge above and below the axis', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI});
-  if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, merges in front of and behind the axis', fn: add(wfP(xa, 2, 1), wfP(xb, 2, 1)), color: '#FFB86C'});
+  // C–H σ bonds: each outer hybrid + an H 1s, so the whole σ skeleton (H–C≡C–H, or the flat H₂C=CH₂) shows
+  const fs = outerHybrids(k, d).map(({P, u}) => add(wfHu(P, u, cs), wfSH(P.clone().addScaledVector(u, CH))));
+  out.push({id: 'σH', name: 'C–H σ bonds <small>' + (k === 'db' ? 'sp² + H 1s' : 'sp + H 1s') + '</small>', role: 'the other hybrids on each carbon overlap head-on with an H 1s: the rest of the σ skeleton', fn: (x, y, z) => fs.reduce((m, f) => Math.max(m, f(x, y, z)), -Infinity), color: SIG});
+  out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge into two sausages, one above and one below the σ skeleton', fn: add(wfPi(xa, 1, 1), wfPi(xb, 1, 1)), color: PI});
+  if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, makes two more sausages in front of and behind the axis', fn: add(wfPi(xa, 2, 1), wfPi(xb, 2, 1)), color: '#FFB86C'});
   return out;
 }
 function buildBond() {
@@ -5468,16 +5497,25 @@ function buildBond() {
   const moving = Math.abs(dCur - dGoal) > 1e-3 || dragging;
   const ext = 2.1 * Math.max(1, S.lobe), st = (moving ? 0.13 : 0.075) * Math.max(1, S.lobe * 0.9), box = [-d / 2 - ext - 0.3, d / 2 + ext + 0.3, -ext, ext, -ext, ext];
   const near = d < T.r0 + 0.35;
+  if (S.type === 'db' || S.type === 'tb') {
+    box[0] = -d / 2 - CH - 1.1; box[1] = d / 2 + CH + 1.1;
+    if (vis('σH')) for (const {P, u} of outerHybrids(S.type, d)) {
+      const H = P.clone().addScaledVector(u, CH), nu = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({color: 0x9AA3B2, depthTest: false}));
+      nu.position.copy(H); nu.renderOrder = 3; model.add(nu);
+      if (S.lbl) label('H', H.clone().add(new THREE.Vector3(0, -0.4, 0)), 'blab dim');
+    }
+  }
   for (const part of bondParts()) {
     const a = vis(part.id);
     if (!a) continue;
     // in double/triple bonds the π clouds are a little see-through so the σ core stays visible
     const multi = S.type === 'db' || S.type === 'tb';
-    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? (multi && part.id !== 'σ' ? 0.72 : 1) : a)) model.add(m);
+    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? (multi && part.id[0] === 'π' ? 0.72 : 1) : a)) model.add(m);
     if (a !== 1 || !near) continue;
     if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
-    if (part.id === 'π') { label('π', new THREE.Vector3(0, 1.35, 0), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.85, 0))); model.add(dot(new THREE.Vector3(0.12, 0.85, 0))); } }
-    if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, 1.35), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, 0.85))); model.add(dot(new THREE.Vector3(0.12, 0, 0.85))); } }
+    const pr = S.type === 'pi' ? [1.35, 0.85] : [1.75, 1.0];   // the double/triple-bond π sausages sit further out
+    if (part.id === 'π') { label('π', new THREE.Vector3(0, pr[0], 0), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, pr[1], 0))); model.add(dot(new THREE.Vector3(0.12, pr[1], 0))); } }
+    if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, pr[0]), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, pr[1]))); model.add(dot(new THREE.Vector3(0.12, 0, pr[1]))); } }
   }
   if (S.lbl) {
     const nm = {ss: ['1s', '1s'], sp: ['1s', 'p'], pp: ['p', 'p'], pi: ['p', 'p'], db: ['C', 'C'], tb: ['C', 'C']}[S.type];
