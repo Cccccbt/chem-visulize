@@ -5383,6 +5383,8 @@ function buildOv() {
 const AP = 0.5, AS = 0.42;
 // S.lobe stretches each p orbital / hybrid along its own axis only (longer lobes, same width); 1s spheres don't change
 const wfS = (cx) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / AS);
+// s–s: a larger 1s (surface radius ≈ 0.8, like the sphere in the separate-orbitals view) so the two spheres actually merge at the bond length
+const wfS2 = (cx) => (x, y, z) => 1.04 * Math.exp(-Math.hypot(x - cx, y, z) / 0.5);
 const wfP = (cx, axis, sgn) => { const s = S.lobe; return (x, y, z) => { const v = [(x - cx), y, z]; v[axis] /= s; const r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / AP); }; };
 // hybrid with s fraction cs² pointing along sgn·x: e^{-r/a}(cs·r + cp·√3·dx)
 const AH = 0.36; // hybrids drawn a little tighter so the σ core doesn't hide the π clouds
@@ -5446,7 +5448,7 @@ function bondParts() { // [{id, name, role, fn, color}]
   const d = dCur, xa = -d / 2, xb = d / 2, k = S.type, add = (f, g) => (x, y, z) => f(x, y, z) + g(x, y, z);
   const SIG = '#B98CF5', PI = '#FF8FB8';
   const sig = (f, name, role) => ({id: 'σ', name, role, fn: f, color: SIG});
-  if (k === 'ss') return [sig(add(wfS(xa), wfS(xb)), 'σ bond <small>1s + 1s</small>', 'the two 1s spheres merge into one cloud around the axis, thickest between the nuclei')];
+  if (k === 'ss') return [sig(add(wfS2(xa), wfS2(xb)), 'σ bond <small>1s + 1s</small>', 'the two 1s spheres merge into one cloud around the axis, thickest between the nuclei')];
   if (k === 'sp') return [sig(add(wfS(xa), wfP(xb, 0, -1)), 'σ bond <small>1s + p</small>', 'the 1s merges with the p lobe that points at it; the far p lobe (opposite phase) stays behind')];
   if (k === 'pp') return [sig(add(wfP(xa, 0, 1), wfP(xb, 0, -1)), 'σ bond <small>p + p</small>', 'the facing lobes merge into one fat lobe on the axis between the nuclei; the outer lobes stay')];
   if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfP(xa, 1, 1), wfP(xb, 1, 1)), color: PI}];
