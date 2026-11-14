@@ -1304,8 +1304,8 @@ body.side-off .app > .panel{display:none}
         <h2 class="sec-h">Overlap</h2>
         <div class="bchips" id="bType"></div>
         <div class="seg" role="radiogroup" aria-label="View" id="bView" style="margin-top:12px">
-          <button type="button" role="radio" data-v="bond" title="Surface of the combined wavefunction ψA + ψB">Bond (ψ<sub>A</sub> + ψ<sub>B</sub>)</button>
-          <button type="button" role="radio" data-v="sep" title="The two atomic orbitals, see-through">Separate orbitals</button>
+          <button type="button" role="radio" data-v="sep" title="The two atomic orbitals overlapping, as drawn in textbooks">Overlap</button>
+          <button type="button" role="radio" data-v="bond" title="The bonding orbital that results: one surface of ψA + ψB">Bonding orbital (ψ<sub>A</sub> + ψ<sub>B</sub>)</button>
         </div>
       </section>
       <section aria-label="Distance" class="ctl">
@@ -5079,7 +5079,7 @@ window.VBCore = (function () {
 const V = window.VBCore;
 const $ = s => document.querySelector(s);
 const KEY = 'aov.vbt';
-const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, col: 'phase', spread: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'bond', lobe: 1, pow: 2.2};
+const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, col: 'phase', spread: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'sep', lobe: 1, pow: 2.2};
 const TYPES = {
   ss: {name: 's–s', bond: 'σ', r0: 1.45, D: 1.0, desc: 'Two s orbitals are spheres, so they can only overlap along the line between the nuclei.'},
   sp: {name: 's–p', bond: 'σ', r0: 1.85, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
@@ -5329,20 +5329,26 @@ function buildOv() {
   const pxP = [0, 1, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0], sC = [1, 0, 0, 0, 0, 0];
   const lab = (on, t, p) => { if (on && S.lbl) label(t, p); };
   const X1 = new THREE.Vector3(1, 0, 0);
+  // textbook overlap pictures for the single bonds and the lone π: s pink spheres, p light-blue teardrops, unchanged in shape
+  const one = c => [new THREE.Color(c), new THREE.Color(c)];
+  const addT = (id, c, L, col, at) => { const a = vis(id); if (!a) return false; model.add(orbital(c, L, col, {at, opacity: a === 1 ? 0.5 : a, cols: one(col)})); return a === 1; };
+  const cs5 = 0.5, cp5 = Math.sqrt(0.75), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];
   if (S.type === 'ss') {
-    const a = add('As', sC, 0.85, COLS.s, A), b = add('Bs', sC, 0.85, COLS.s, B);
+    const a = addT('As', sC, 0.95, TB_S, A), b = addT('Bs', sC, 0.95, TB_S, B);
     lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, '1s', B.clone().add(new THREE.Vector3(0.6, 0.85, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.2, 0.25, 0.3)));
   } else if (S.type === 'sp') {
-    const a = add('As', sC, 0.85, COLS.s, A), b = add('Bp', pxN, 1.3, COLS.p, B);
+    const a = addT('As', sC, 0.95, TB_S, A), b = addT('Bp', pxN, 1.4, TB_P, B);
     lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.9, 0, 0)));
   } else if (S.type === 'pp') {
-    const a = add('Ap', pxP, 1.3, COLS.p, A), b = add('Bp', pxN, 1.3, COLS.p, B);
+    // end-on: the lobe facing the other atom drawn big, the far lobe small, as in the textbook picture
+    const a = addT('Ap', pFace, 1.45, TB_P, A), b = addT('Bp', pFaceB, 1.45, TB_P, B);
     lab(a, 'p', A.clone().add(new THREE.Vector3(-1.2, 0.5, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0.9, 0, 0))); e1(b, B.clone().add(new THREE.Vector3(-0.9, 0, 0)));
   } else if (S.type === 'pi') {
-    const a = add('Ap', pzC, 1.3, COLS.p, A), b = add('Bp', pzC, 1.3, COLS.p, B);
+    const a = addT('Ap', pzC, 1.3, TB_P, A), b = addT('Bp', pzC, 1.3, TB_P, B);
+    nodalPlane(d);
     lab(a, 'p', A.clone().add(new THREE.Vector3(-0.5, 1.5, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(0.5, 1.5, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0, 0.9, 0)), X1); e1(b, B.clone().add(new THREE.Vector3(0, -0.9, 0)), X1);
   } else {
@@ -5399,6 +5405,12 @@ const wfHu = (P, u, cs) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; retu
 const wfSH = P => (x, y, z) => 0.5 * Math.exp(-Math.hypot(x - P.x, y - P.y, z - P.z) / 0.42);
 const CH = 1.55;   // C–H distance used for the outer atoms
 // the outer hybrids of each carbon (the ones not pointing at the other carbon): [{P, u}] in screen coordinates
+// the nodal plane of a π bond: the plane containing the bond axis, where the π density is zero
+function nodalPlane(d) {
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(d + 4.2, 3.2), new THREE.MeshBasicMaterial({color: 0xBDF5E3, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide}));
+  pl.rotation.x = -Math.PI / 2; model.add(pl);
+  if (S.lbl) label('nodal plane', new THREE.Vector3(-d / 2 - 1.9, 0.12, 1.4), 'blab dim');
+}
 function outerHybrids(k, d) {
   const hy = k === 'db' ? V.HYB.sp2 : V.HYB.sp, flip = c => c.map((x, i) => (i === 1 ? -x : x)), out = [];
   hy.forEach((c, i) => { if (i === 0) return;
@@ -5496,29 +5508,11 @@ function buildBond() {
     if (vis('σH')) for (const {P, u} of outerHybrids(S.type, d)) {
       const H = P.clone().addScaledVector(u, CH), nu = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({color: 0x9AA3B2, depthTest: false}));
       nu.position.copy(H); nu.renderOrder = 3; model.add(nu);
-      if (S.lbl) label('H', H.clone().add(new THREE.Vector3(0, -0.4, 0)), 'blab dim');
+      if (S.lbl) { label('H', H.clone().add(new THREE.Vector3(0, -0.4, 0)), 'blab dim'); label('C–H σ', P.clone().addScaledVector(u, CH * 0.55).add(new THREE.Vector3(0, 0.55, 0)), 'blab'); }
     }
   }
-  if (S.type === 'pi' && vis('π')) {   // the nodal plane: the plane of the bond axis, where the π density is zero
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(d + 4.2, 3.2), new THREE.MeshBasicMaterial({color: 0xBDF5E3, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide}));
-    pl.rotation.x = -Math.PI / 2; model.add(pl);
-    if (S.lbl) label('nodal plane', new THREE.Vector3(-d / 2 - 1.9, 0.12, 1.4), 'blab dim');
-  }
-  // s–s, s–p, p–p end-on: drawn as in textbooks — the two atomic orbitals, unchanged in shape, overlapping
-  // (s pink, p blue; the overlap shows as the deeper colour where they cross). Only their distance changes.
-  if (S.type === 'ss' || S.type === 'sp' || S.type === 'pp') {
-    const a = vis('σ');
-    if (a) {
-      const o = a === 1 ? 0.5 : a, sC = [1, 0, 0, 0, 0, 0], one = c => [new THREE.Color(c), new THREE.Color(c)];
-      // end-on p: the lobe facing the other atom drawn big, the far lobe small, as in the textbook picture
-      const cs = 0.5, cpp = Math.sqrt(1 - cs * cs), pF = [cs, cpp, 0, 0, 0, 0], pB = [cs, -cpp, 0, 0, 0, 0], pPlain = [0, -1, 0, 0, 0, 0];
-      if (S.type === 'ss') { model.add(orbital(sC, 0.95, TB_S, {at: A, opacity: o, cols: one(TB_S)})); model.add(orbital(sC, 0.95, TB_S, {at: B, opacity: o, cols: one(TB_S)})); }
-      else if (S.type === 'sp') { model.add(orbital(sC, 0.95, TB_S, {at: A, opacity: o, cols: one(TB_S)})); model.add(orbital(pPlain, 1.4, TB_P, {at: B, opacity: o, cols: one(TB_P)})); }
-      else { model.add(orbital(pF, 1.45, TB_P, {at: A, opacity: o, cols: one(TB_P)})); model.add(orbital(pB, 1.45, TB_P, {at: B, opacity: o, cols: one(TB_P)})); }
-      if (a === 1 && near) { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
-    }
-  }
-  else for (const part of bondParts()) {
+  if (S.type === 'pi' && vis('π')) nodalPlane(d);
+  for (const part of bondParts()) {
     const a = vis(part.id);
     if (!a) continue;
     // in double/triple bonds the π clouds are a little see-through so the σ core stays visible
