@@ -1363,7 +1363,18 @@ body.side-off .app > .panel{display:none}
       <p>Atomic orbitals combine into bonding and antibonding orbitals that belong to the whole molecule</p>
     </header>
 
-    <section aria-label="Molecule">
+    <section aria-label="Mode">
+      <div class="seg" role="radiogroup" aria-label="Mode" id="mMode">
+        <button type="button" role="radio" data-m="gen">General</button>
+        <button type="button" role="radio" data-m="mol">Molecules</button>
+      </div>
+    </section>
+    <section aria-label="Molecules" id="mMolBox">
+      <h2 class="sec-h">Diatomic molecule</h2>
+      <div class="bchips" id="mEls"></div>
+      <div class="vstep" style="margin-top:12px"><span class="vsl">Charge</span><button type="button" id="mCm" aria-label="Add an electron">−</button><span class="vsv" id="mCn"></span><button type="button" id="mCp" aria-label="Remove an electron">+</button></div>
+    </section>
+    <section aria-label="Two identical atoms" id="mGenBox">
       <h2 class="sec-h">Two identical atoms</h2>
       <div class="seg" role="radiogroup" aria-label="Valence orbitals" id="mShell">
         <button type="button" role="radio" data-s="1">1s only</button>
@@ -5856,7 +5867,18 @@ window.initVBT = function () {
 (function () {
 const $ = s => document.querySelector(s);
 const KEY = 'aov.mo';
-const S = {shell: 2, ne: 12, mix: false, sel: 'pix', aos: true, node: true, lbl: true, spin: false};   // generic: no specific molecules
+const S = {mode: 'gen', el: 'O', q: 0, shell: 2, ne: 12, mix: false, sel: 'pix', aos: true, node: true, lbl: true, spin: false};   // mode: 'gen' generic / 'mol' named molecules
+// element: [Z, valence electrons]
+const ELS = {H: [1, 1], He: [2, 2], Li: [3, 1], Be: [4, 2], B: [5, 3], C: [6, 4], N: [7, 5], O: [8, 6], F: [9, 7], Ne: [10, 8]};
+const NAMES = {
+  'H|1': 'hydrogen molecular ion', 'H|0': 'hydrogen', 'H|-1': 'hydride ion', 'He|1': 'helium dimer ion', 'He|0': 'helium dimer',
+  'O|1': 'dioxygenyl', 'O|0': 'oxygen', 'O|-1': 'superoxide', 'O|-2': 'peroxide', 'N|0': 'nitrogen', 'N|1': 'nitrogen cation',
+  'C|0': 'dicarbon', 'C|-2': 'acetylide', 'F|0': 'fluorine', 'B|0': 'diboron', 'Li|0': 'dilithium', 'Be|0': 'diberyllium', 'Ne|0': 'dineon'
+};
+// in molecule mode the generic settings follow from the molecule
+function syncMol() { if (S.mode !== 'mol') return; const [Z, v] = ELS[S.el]; S.shell = Z <= 2 ? 1 : 2; S.mix = Z <= 7; S.ne = 2 * v - S.q; }
+const maxQ = el => 2 * ELS[el][1] - 1;
+const minQ = el => -((ELS[el][0] <= 2 ? 4 : 16) - 2 * ELS[el][1]);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const chg = q => (Math.abs(q) > 1 ? Math.abs(q) : '') + (q > 0 ? '+' : '−');
 const SUPD = '⁰¹²³⁴⁵⁶⁷⁸⁹', sup = n => String(n).split('').map(d => SUPD[d]).join('');
@@ -6003,8 +6025,8 @@ function build() {
     if (S.lbl) label('nodal plane', new THREE.Vector3(0, 1.95, 0), 'blab dim');
   }
   if (S.lbl) {
-    label('A', A.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
-    label('B', B.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
+    label(S.mode === 'mol' ? esc(S.el) : 'A', A.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
+    label(S.mode === 'mol' ? esc(S.el) : 'B', B.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
     label(m.name.replace('*', '<sup>*</sup>'), new THREE.Vector3(0, m.shape.startsWith('pi') ? 1.6 : 1.25, 0), m.bond > 0 ? 'bsig' : 'bsig pi');
   }
 }
@@ -6017,9 +6039,12 @@ function diagram(r) {
   const line = (x, y, w, cls) => `<line x1="${x - w / 2}" y1="${y}" x2="${x + w / 2}" y2="${y}" class="${cls}"/>`;
   const out = [];
   out.push(`<line x1="14" y1="${H - 24}" x2="14" y2="56" class="max"/><path d="M10 62 L14 52 L18 62" class="max"/><text x="22" y="52" class="mlab">energy</text>`);
-  out.push(`<text x="${xA}" y="${H - 8}" class="mhead">atom A</text><text x="${xM}" y="${H - 8}" class="mhead">molecule</text><text x="${xB}" y="${H - 8}" class="mhead">atom B</text>`);
-  // atomic orbitals: the valence electrons shared out between the two atoms (A gets the odd one)
-  const perA = Math.ceil(S.ne / 2), perB = Math.floor(S.ne / 2);
+  const mol = S.mode === 'mol', hA = mol ? `${esc(S.el)} (A)` : 'atom A', hB = mol ? `${esc(S.el)} (B)` : 'atom B',
+    hM = mol ? `${esc(S.el)}₂${S.q ? sup(Math.abs(S.q)).replace(/^¹$/, '') + (S.q > 0 ? '⁺' : '⁻') : ''}` : 'molecule';
+  out.push(`<text x="${xA}" y="${H - 8}" class="mhead">${hA}</text><text x="${xM}" y="${H - 8}" class="mhead">${hM}</text><text x="${xB}" y="${H - 8}" class="mhead">${hB}</text>`);
+  // atomic orbitals: the valence electrons shared out between the two atoms (A gets the odd one);
+  // for a named ion each neutral atom is shown (the charge is on the molecule only)
+  const perA = mol ? ELS[S.el][1] : Math.ceil(S.ne / 2), perB = mol ? ELS[S.el][1] : Math.floor(S.ne / 2);
   const split = per => (L.small ? [per] : [Math.min(2, per), Math.max(0, per - 2)]);
   L.ao.forEach((ao, i) => {
     for (const x of [xA, xB]) {
@@ -6055,12 +6080,18 @@ function diagram(r) {
 }
 
 /* ---------- panel ---------- */
-function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} if (S.shell !== 1 && S.shell !== 2) S.shell = 2; if (!(S.ne >= 1)) S.ne = 12; delete S.el; delete S.q; }
+function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} if (S.shell !== 1 && S.shell !== 2) S.shell = 2; if (!(S.ne >= 1)) S.ne = 12; if (!ELS[S.el]) S.el = 'O'; if (!Number.isInteger(S.q)) S.q = 0; if (S.mode !== 'mol') S.mode = 'gen'; }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function frac(x) { return Number.isInteger(x) ? String(x) : (Math.floor(x) || '') + '½'; }
 function render(reset) {
+  syncMol();
   S.ne = Math.max(1, Math.min(maxE(), S.ne));
-  const r = fill(), L = r.L;
+  const r = fill(), L = r.L, mol = S.mode === 'mol';
+  document.querySelectorAll('#mMode button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.m === S.mode)));
+  $('#mMolBox').hidden = !mol; $('#mGenBox').hidden = mol;
+  $('#mEls').innerHTML = Object.keys(ELS).map(e => `<button type="button" data-e="${e}" aria-pressed="${e === S.el}"><b>${e}<sub>2</sub></b></button>`).join('');
+  $('#mCn').textContent = S.q ? chg(S.q) : '0';
+  $('#mCm').disabled = S.q <= minQ(S.el) || S.q <= -2; $('#mCp').disabled = S.q >= Math.min(2, maxQ(S.el));
   if (!L.mo.some(m => m.id === S.sel)) S.sel = L.small ? (S.sel.endsWith('x') ? 's1x' : 's1') : (S.sel === 's1x' ? 'pix' : 'pi');
   document.querySelectorAll('#mShell button').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.s === S.shell)));
   document.querySelectorAll('#mMix button').forEach(b => b.setAttribute('aria-checked', String(!!+b.dataset.m === !!S.mix)));
@@ -6068,17 +6099,19 @@ function render(reset) {
   $('#mQn').textContent = String(S.ne);
   $('#mQm').disabled = S.ne <= 1; $('#mQp').disabled = S.ne >= maxE();
   $('#mDiag').innerHTML = diagram(r);
-  const formula = `${S.ne} valence electron${S.ne === 1 ? '' : 's'}`;
-  const name = L.small ? '1s orbitals' : '2s + 2p orbitals';
+  const formula = mol ? `${esc(S.el)}<sub>2</sub>${S.q ? `<sup>${chg(S.q)}</sup>` : ''}` : `${S.ne} valence electron${S.ne === 1 ? '' : 's'}`;
+  const name = mol ? NAMES[S.el + '|' + S.q] : (L.small ? '1s orbitals' : '2s + 2p orbitals');
   // configuration
   const order = L.mo.slice().sort((a, b) => b.y - a.y);
   const conf = (L.small ? '' : 'KK ') + order.map(m => { const n = r.occ[m.id].reduce((a, b) => a + b, 0); return n ? `(${m.name})${sup(n)}` : ''; }).filter(Boolean).join(' ');
   const bo = r.order;
   const notes = [];
-  if (bo <= 0) notes.push(`Bond order ${frac(bo)}: as many electrons in antibonding as in bonding orbitals, so no net bond. the two atoms don't stay together.`);
-  if (r.unp && r.occ.pix && r.occ.pix.every(x => x === 1)) notes.push('The two π*2p orbitals have the same energy, so their electrons stay unpaired (Hund\'s rule): the molecule is paramagnetic, which a Lewis structure with every electron paired can\'t show.');
-  if (!L.small && L.mixed) notes.push('With s–p mixing (a small 2s–2p gap: lighter atoms), σ2p is pushed above π2p.');
-  if (!L.small && !L.mixed) notes.push('Without s–p mixing (a large 2s–2p gap: heavier atoms), σ2p lies below π2p.');
+  if (bo <= 0) notes.push(`Bond order ${frac(bo)}: as many electrons in antibonding as in bonding orbitals, so no net bond. ${mol ? `${formula} isn't a stable molecule.` : 'The two atoms don\'t stay together.'}`);
+  if (r.unp && r.occ.pix && r.occ.pix.every(x => x === 1) && !(mol && S.el === 'O' && S.q === 0)) notes.push('The two π*2p orbitals have the same energy, so their electrons stay unpaired (Hund\'s rule): the molecule is paramagnetic, which a Lewis structure with every electron paired can\'t show.');
+  if (mol && S.el === 'O' && S.q === 0) notes.push('Two unpaired electrons in π*2p make O<sub>2</sub> paramagnetic: liquid oxygen sticks to a magnet. The Lewis structure O=O, with every electron paired, can\'t explain that.');
+  if (mol && !L.small) notes.push(L.mixed ? 'Li<sub>2</sub>–N<sub>2</sub> have a small 2s–2p gap, so s–p mixing puts σ2p above π2p.' : 'O<sub>2</sub>–Ne<sub>2</sub> have a large 2s–2p gap, so σ2p stays below π2p.');
+  else if (!L.small && L.mixed) notes.push('With s–p mixing (a small 2s–2p gap: lighter atoms), σ2p is pushed above π2p.');
+  else if (!L.small && !L.mixed) notes.push('Without s–p mixing (a large 2s–2p gap: heavier atoms), σ2p lies below π2p.');
   const rows = [
     ['Electrons', `${r.total}${L.small ? '' : ' valence'}<small>${r.bonding} in bonding MOs, ${r.anti} in antibonding</small>`],
     ['Bond order', `<b class="key">${frac(bo)}</b><small>½ (bonding − antibonding) = ½ (${r.bonding} − ${r.anti})</small>`],
@@ -6102,6 +6135,10 @@ function render(reset) {
   if (reset) fit();
 }
 function bind() {
+  $('#mMode').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mode = b.dataset.m; save(); render(false); });
+  $('#mEls').addEventListener('click', e => { const b = e.target.closest('button[data-e]'); if (!b) return; S.el = b.dataset.e; S.q = 0; save(); render(false); });
+  $('#mCm').addEventListener('click', () => { S.q--; save(); render(false); });
+  $('#mCp').addEventListener('click', () => { S.q++; save(); render(false); });
   $('#mShell').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; S.shell = +b.dataset.s; S.ne = S.shell === 1 ? 2 : 12; save(); render(false); });
   $('#mMix').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mix = !!+b.dataset.m; save(); render(false); });
   $('#mQm').addEventListener('click', () => { S.ne--; save(); render(false); });
@@ -6195,7 +6232,7 @@ window.initMO = function () {
        desc: 'See the sp, sp², sp³, sp³d and sp³d² hybrids that form σ bonds, with orbital diagrams, and bring two atoms together to form σ and π bonds.',
        tags: ['Hybridization', 'Promotion', 'σ and π overlap']},
       {id: 'mo', app: '#mApp', nav: 'MO theory', title: 'Molecular Orbital Theory', init: () => window.initMO(),
-       desc: 'MO energy diagrams for two identical atoms: set the number of valence electrons, fill the levels, read off bond order and magnetism, and see each bonding and antibonding orbital in 3D.',
+       desc: 'MO energy diagrams for two identical atoms — set the valence electrons yourself or pick H₂ to Ne₂ and their ions — fill the levels, read off bond order and magnetism, and see each bonding and antibonding orbital in 3D.',
        tags: ['Bond order', 'Paramagnetism', 'Bonding / antibonding']}
     ]},
     {name: 'Thermochemistry', blurb: 'Measuring the heat of a reaction', pages: [
