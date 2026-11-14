@@ -5177,7 +5177,7 @@ function orbital(c, L, color, opts = {}) {
   let mp = 1e-9, mn = 1e-9;
   for (let i = 0; i < n; i++) { const f = fs[i] = V.evalF(c, toC(base.getX(i), base.getY(i), base.getZ(i))); if (f > mp) mp = f; if (-f > mn) mn = -f; }
   // lobe width ≈ L/√pw, so stretching a lobe by S.lobe and raising pw by S.lobe² keeps its width while it gets longer
-  const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, 2.5), kn = Math.pow(mn / fmax, 2.5), pw = S.pow * S.lobe * S.lobe * (1 - 0.9 * c[0] * c[0]);   // small lobe drawn much smaller; s-rich lobes fuller
+  const fmax = Math.max(mp, mn), kp = Math.pow(mp / fmax, 1.4), kn = Math.pow(mn / fmax, 1.4), pw = S.pow * S.lobe * S.lobe * (1 - 0.9 * c[0] * c[0]);   // small lobe drawn much smaller; s-rich lobes fuller
   const [cp, cn] = opts.cols || phaseCols(color);
   // p orbitals and hybrids (one lobe per phase): shape each lobe by the angle from its own axis, so a hybrid's big
   // lobe is the same teardrop as a p lobe, just longer. Pure d orbitals (several lobes per phase) keep the amplitude.
@@ -5349,7 +5349,7 @@ function buildOv() {
   // textbook overlap pictures for the single bonds and the lone π: s pink spheres, p light-blue teardrops, unchanged in shape
   const one = c => [new THREE.Color(c), new THREE.Color(c)];
   const addT = (id, c, L, col, at) => { const a = vis(id); if (!a) return false; model.add(orbital(c, L, col, {at, opacity: a === 1 ? 0.5 : a, cols: one(col)})); return a === 1; };
-  const cs5 = 0.26, cp5 = Math.sqrt(1 - 0.26 * 0.26), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];   // end-on p: outer lobe ≈ 45% of the facing lobe
+  const cs5 = 0.43, cp5 = Math.sqrt(1 - 0.43 * 0.43), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];   // end-on p: outer lobe ≈ 45% of the facing lobe
   if (S.type === 'ss') {
     const a = addT('As', sC, S_R, TB_S, A), b = addT('Bs', sC, S_R, TB_S, B);
     lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, '1s', B.clone().add(new THREE.Vector3(0.6, 0.85, 0)));
@@ -5520,7 +5520,7 @@ function bondSpec(d) {
   const A = new THREE.Vector3(-d / 2, 0, 0), B = new THREE.Vector3(d / 2, 0, 0), out = [];
   const one = c => [new THREE.Color(c), new THREE.Color(c)];
   const sC = [1, 0, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0];
-  const cs5 = 0.26, cp5 = Math.sqrt(1 - 0.26 * 0.26), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];   // end-on p: outer lobe ≈ 45% of the facing lobe
+  const cs5 = 0.43, cp5 = Math.sqrt(1 - 0.43 * 0.43), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];   // end-on p: outer lobe ≈ 45% of the facing lobe
   const it = (g, c, L, at, cols) => out.push({g, c, L, at, cols});
   const k = S.type;
   if (k === 'ss') { it('σ', sC, S_R, A, one(TB_S)); it('σ', sC, S_R, B, one(TB_S)); }
@@ -5552,7 +5552,7 @@ function lobeInfo(c) {   // the same per-lobe numbers orbital() uses: lobe axes 
   const base = UNIT.attributes.position; let mp = 1e-9, mn = 1e-9;
   for (let i = 0; i < base.count; i++) { const f = V.evalF(c, toC(base.getX(i), base.getY(i), base.getZ(i))); if (f > mp) mp = f; if (-f > mn) mn = -f; }
   const fmax = Math.max(mp, mn), one = Math.abs(c[1]) + Math.abs(c[2]) + Math.abs(c[3]) > 1e-6;
-  const o = {mp, mn, kp: Math.pow(mp / fmax, 2.5), kn: Math.pow(mn / fmax, 2.5), one, dp: one ? V.lobeDir(c).dir : null, dn: one ? V.lobeDir(c.map(x => -x)).dir : null};
+  const o = {mp, mn, kp: Math.pow(mp / fmax, 1.4), kn: Math.pow(mn / fmax, 1.4), one, dp: one ? V.lobeDir(c).dir : null, dn: one ? V.lobeDir(c.map(x => -x)).dir : null};
   lobeCache.set(key, o); return o;
 }
 // (R(û)/r)⁴ for one lobe (sign sg) of an item: ≥ 1 inside the Overlap-view surface, falling off quickly outside
