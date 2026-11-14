@@ -1404,6 +1404,7 @@ body.side-off .app > .panel{display:none}
     <section aria-label="Selected orbital">
       <h2 class="sec-h">Selected orbital</h2>
       <div class="borb" id="mSel"></div>
+      <button type="button" class="ptbtn" id="mAnim" style="margin-top:10px" title="The two atoms move in from far apart and their orbitals combine into this MO">▶ Animate formation</button>
     </section>
 
     <section aria-label="Display" class="ctl">
@@ -5921,7 +5922,8 @@ const maxE = () => levels().mo.reduce((s, m) => s + 2 * m.deg, 0);   // every le
 /* ---------- 3-D: isosurface of ψA ± ψB ---------- */
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [], dirty = true;
 const Y = new THREE.Vector3(0, 1, 0);
-const D = 2.0, ISO = 0.085;
+const D0 = 2.0, D_FAR = 5.6, ISO = 0.085;
+let D = D0, animT0 = 0;   // formation animation: the atoms move in from D_FAR to D0
 const wS = (cx, a) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a);
 const wP = (cx, axis, sgn) => (x, y, z) => { const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / 0.5); };
 function moFns(shape, small) {
@@ -5934,7 +5936,7 @@ function moFns(shape, small) {
 }
 const PH_POS = 0xF08AA6, PH_NEG = 0x5FA4E6;
 function iso(fn, op) {
-  const st = 0.075, x0 = -D / 2 - 2.5, x1 = D / 2 + 2.5, e = 2.2;
+  const st = animT0 ? 0.11 : 0.075, x0 = -D / 2 - 2.5, x1 = D / 2 + 2.5, e = 2.2;
   const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil(2 * e / st) + 1, nz = ny;
   const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz);
   let k = 0;
@@ -5967,9 +5969,14 @@ function initScene() {
   const rim = new THREE.DirectionalLight(0x9db8ff, 0.35); rim.position.set(-2, -1, -1.5); scene.add(rim);
   const resize = () => { const w = viewer.clientWidth, hh = viewer.clientHeight; if (!w || !hh) return; renderer.setSize(w, hh, false); camera.aspect = w / hh; camera.updateProjectionMatrix(); };
   new ResizeObserver(resize).observe(viewer); resize();
-  const loop = () => {
+  const loop = now => {
     requestAnimationFrame(loop);
     if ($('#mApp').hidden) return;
+    if (animT0) {   // formation: ease the separation down; the MO surface forms as the atoms close in
+      const f = Math.min(1, (now - animT0) / 2800), e = f * f * (3 - 2 * f);
+      D = D_FAR + (D0 - D_FAR) * e; dirty = true;
+      if (f >= 1) { animT0 = 0; D = D0; $('#mAnim').disabled = false; }
+    }
     if (dirty) { dirty = false; build(); }
     controls.autoRotate = S.spin;
     controls.update(); renderer.render(scene, camera); placeLabels();
@@ -6023,7 +6030,7 @@ function build() {
   // the molecular orbital
   for (const mesh of iso(f.M, S.aos ? 0.8 : 1)) model.add(mesh);
   // the two atomic orbitals being combined, drawn as outlines beside the molecule
-  if (S.aos) {
+  if (S.aos && !animT0) {
     const off = aoOff(m), spread = 1.3;
     for (const [fn, side, sg] of [[f.A, -1, 1], [f.B, 1, f.sg]]) {
       const g = new THREE.Group();
@@ -6188,6 +6195,10 @@ function bind() {
   $('#mDiag').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); } });
   for (const [id, k] of [['#mAll', 'all'], ['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k === 'aos' || k === 'all') { render(true); } dirty = true; });
   $('#mReset').addEventListener('click', fit);
+  $('#mAnim').addEventListener('click', () => {   // replay the selected MO forming as the atoms approach
+    if (S.all) { S.all = false; save(); render(true); }
+    animT0 = performance.now(); D = D_FAR; dirty = true; $('#mAnim').disabled = true;
+  });
 }
 window.initMO = function () {
   if (inited) { dirty = true; return; }
