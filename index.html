@@ -5313,7 +5313,6 @@ function ovOrbs() {
   else {
     const hy = k === 'db' ? 'sp²' : 'sp';
     pair('h', hy, 'the hybrid pointing at the other atom: head-on overlap → σ');
-    pair('o', hy + ' <small>other' + (k === 'db' ? 's' : '') + '</small>', `holds the bond${k === 'db' ? 's' : ''} to the atom${k === 'db' ? 's' : ''} on the far side (faint nuclei)`);
     pair('z', 'p', 'unhybridized, perpendicular to the hybrids: side-on overlap → π');
     if (k === 'tb') pair('y', 'p', 'the second unhybridized p, at 90° to the first: another side-on overlap → second π');
   }
@@ -5357,6 +5356,7 @@ function buildOv() {
     const flip = c => c.map((x, k) => (k === 1 ? -x : x));
     let aH = false, bH = false;
     hy.forEach((c, i) => {
+      if (i > 0) return;   // only the hybrid pointing at the other carbon; the outer ones (C–H bonds) are left out
       const toward = i === 0, idA = toward ? 'Ah' : 'Ao', idB = toward ? 'Bh' : 'Bo';
       const a = add(idA, c, 1.3, toward ? COLS.hyb : '#6E6290', A, toward ? 0.6 : 0.3);
       const b = add(idB, flip(c), 1.3, toward ? COLS.hyb : '#6E6290', B, toward ? 0.6 : 0.3);
