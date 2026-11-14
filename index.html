@@ -1276,20 +1276,6 @@ body.side-off .app > .panel{display:none}
         <h2 class="sec-h" style="margin-top:14px">Central atom</h2>
         <div class="bchips" id="bAtom"></div>
       </section>
-      <section aria-label="Steps">
-        <h2 class="sec-h">Step by step</h2>
-        <div class="bstepw">
-          <button type="button" class="hbtn" id="bPrev" aria-label="Previous step">‹</button>
-          <div class="seg four" role="radiogroup" aria-label="Step" id="bStep">
-            <button type="button" role="radio" data-s="1">1 Ground</button>
-            <button type="button" role="radio" data-s="2">2 Promote</button>
-            <button type="button" role="radio" data-s="3">3 Hybridize</button>
-            <button type="button" role="radio" data-s="4">4 Bond</button>
-          </div>
-          <button type="button" class="hbtn" id="bNext" aria-label="Next step">›</button>
-        </div>
-        <p class="lstep" id="bStepTxt"></p>
-      </section>
       <section aria-label="Orbital diagram">
         <h2 class="sec-h">Orbital diagram</h2>
         <div class="bboxes" id="bBoxes"></div>
@@ -5109,7 +5095,7 @@ const Y = new THREE.Vector3(0, 1, 0);
 const toT = v => new THREE.Vector3(v[0], v[2], -v[1]);
 const toC = (x, y, z) => [x, -z, y];
 
-function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} S.lobe = 1; S.pow = 4; }   // lobe shape is fixed (slim textbook teardrop)
+function load() { try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {} S.lobe = 1; S.pow = 4; S.step = 4; }   // lobe shape is fixed (slim textbook teardrop); hybridization always shows the bonded hybrids
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 const atom = () => { const a = V.ATOMS[S.set]; if (S.ai >= a.length) S.ai = 0; return a[S.ai]; };
 
@@ -5707,7 +5693,6 @@ function renderHybPanel() {
     const c = V.config(set, v, nn);
     return `<button type="button" data-i="${i}" aria-pressed="${i === S.ai}"><b>${a}</b><small>${c.bonds} bond${c.bonds === 1 ? '' : 's'}${c.lp ? ` · ${c.lp} LP` : ''}</small></button>`;
   }).join('');
-  document.querySelectorAll('#bStep button').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.s === S.step)));
   const row = (title, cls, groups) => `<div class="brow${cls}"><span class="brl">${title}</span><div class="bgroups">${boxes(groups)}</div></div>`;
   const gs = c => [{label: n + 's', cells: c.s}, {label: n + 'p', cells: c.p}].concat(usesD ? [{label: n + 'd', cells: c.d, cls: 'dim'}] : []);
   const hy = [{label: info.name, cells: cfg.hyb, cls: 'hyb'}].concat(cfg.left.length ? [{label: n + 'p', cells: cfg.left, cls: 'left'}] : []).concat(usesD && set === 'sp3d' ? [{label: n + 'd', cells: [0, 0, 0, 0], cls: 'dim'}] : usesD ? [{label: n + 'd', cells: [0, 0, 0], cls: 'dim'}] : []);
@@ -5724,7 +5709,6 @@ function renderHybPanel() {
   else if (S.step === 2) txt = cfg.promoted ? `<b>Promote ${cfg.promoted === 1 ? 'an electron' : cfg.promoted + ' electrons'}</b> to an empty ${cfg.excited.d.some(x => x) ? `${n}d` : `${n}p`} orbital, giving ${cfg.need} unpaired electrons. This costs energy, but forming the extra bonds pays it back.` : `<b>No promotion needed:</b> ${sym} already has ${cfg.need} unpaired electrons. Its extra electrons will stay paired as lone pairs.`;
   else if (S.step === 3) txt = `<b>Mix ${mixTxt}</b> orbitals into ${cfg.hyb.length} ${info.name} hybrids. They are identical in shape, point in a ${info.geo} arrangement (${info.angle}) and each has ${info.s} s character.${cfg.left.length ? ` ${cfg.left.length === 1 ? 'One p orbital stays' : 'Two p orbitals stay'} unhybridized, at right angles to the hybrids.` : ''}${cfg.lp ? ` ${cfg.lp === 1 ? 'One hybrid holds' : cfg.lp + ' hybrids hold'} a lone pair.` : ''}`;
   else txt = `<b>Each half-filled ${info.name} hybrid overlaps head-on</b> with a half-filled ${partner === 'H' ? 'H 1s' : 'p orbital on an outer atom X'}: ${cfg.bonds} σ bond${cfg.bonds === 1 ? '' : 's'}, each holding one electron from each atom.${cfg.lp ? ` The ${cfg.lp} lone pair${cfg.lp === 1 ? ' stays' : 's stay'} in ${cfg.lp === 1 ? 'its hybrid' : 'their hybrids'}.` : ''}${cfg.left.some(x => x === 1) ? ' The half-filled unhybridized p orbitals are free to make π bonds with a neighbour that has one too (see σ and π bonds).' : cfg.left.length ? ' The empty p orbital can accept an electron pair from another molecule.' : ''}`;
-  $('#bStepTxt').innerHTML = txt;
   const rows = [
     ['Hybrids', `${cfg.hyb.length} × ${info.name}<small>from ${mixTxt}</small>`],
     ['Arrangement', `${info.geo} · ${info.angle}`],
@@ -5735,7 +5719,7 @@ function renderHybPanel() {
   ];
   $('#bRead').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   $('#bTitle').innerHTML = `${esc(sym)} <span class="bh">${info.name}</span>`;
-  $('#bSub').innerHTML = `Step <b>${S.step}</b> of 4 · ${['ground state', 'promote', 'hybridize', 'form σ bonds'][S.step - 1]}`;
+  $('#bSub').innerHTML = `${info.geo} · ${info.angle} · σ bonds`;
 }
 const morse = (T, r) => T.D * (Math.pow(1 - Math.exp(-1.6 * (r - T.r0)), 2) - 1);
 function syncView() { document.querySelectorAll('#bView button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === S.ovView))); }
@@ -5826,9 +5810,6 @@ function bind() {
   $('#bMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; S.solo = null; save(); render(true); });
   $('#bSet').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.set = b.dataset.k; S.ai = 0; S.solo = null; save(); render(true); });
   $('#bAtom').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; S.ai = +b.dataset.i; S.solo = null; save(); render(false); });
-  $('#bStep').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.step = +b.dataset.s; save(); render(false); });
-  $('#bPrev').addEventListener('click', () => { if (S.step > 1) { S.step--; save(); render(false); } });
-  $('#bNext').addEventListener('click', () => { if (S.step < 4) { S.step++; save(); render(false); } });
   $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; const k = b.dataset.k; if (k === 'db' || k === 'tb') setSig(S.sig || 'hyb', k === 'db' ? 1 : 2); else { S.type = k; S.npi = 0; } S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
   // σ + π / σ + 2π: the σ part can come from s–s, s–p, p–p or the sp²/sp hybrids (the original double/triple bond)
   const setSig = (sg, n) => { S.sig = sg; if (sg === 'hyb') { S.type = n === 1 ? 'db' : 'tb'; S.npi = 0; } else { S.type = sg; S.npi = n; } };
@@ -6201,7 +6182,7 @@ window.initMO = function () {
        desc: 'Build any molecule in 3D from its electron domains: see where lone pairs sit and how they squeeze bond angles. Switch on polarity to see bond dipoles and the net dipole.',
        tags: ['AXₙEₘ', 'Bond angles', 'Polarity']},
       {id: 'vbt', app: '#bApp', nav: 'Valence bond theory', title: 'Valence Bond Theory', init: () => window.initVBT(),
-       desc: 'Watch s and p orbitals mix into sp, sp², sp³, sp³d and sp³d² hybrids step by step, and bring two atoms together to form σ and π bonds.',
+       desc: 'See the sp, sp², sp³, sp³d and sp³d² hybrids that form σ bonds, with orbital diagrams, and bring two atoms together to form σ and π bonds.',
        tags: ['Hybridization', 'Promotion', 'σ and π overlap']},
       {id: 'mo', app: '#mApp', nav: 'MO theory', title: 'Molecular Orbital Theory', init: () => window.initMO(),
        desc: 'MO energy diagrams for H₂ to Ne₂ and their ions: fill the levels, read off bond order and magnetism, and see each bonding and antibonding orbital in 3D.',
