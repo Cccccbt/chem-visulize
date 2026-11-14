@@ -1395,7 +1395,7 @@ body.side-off .app > .panel{display:none}
     </section>
 
     <p class="note"><b>How it works.</b> When two atoms approach, each pair of matching atomic orbitals combines in two ways. <b>In phase</b> (ψ<sub>A</sub> + ψ<sub>B</sub>) gives a lower-energy <b>bonding</b> orbital with density between the nuclei. <b>Out of phase</b> (ψ<sub>A</sub> − ψ<sub>B</sub>) gives a higher-energy <b>antibonding</b> orbital (*) with a node between them. Electrons fill the molecular orbitals from the bottom up, two per orbital, spreading over equal-energy orbitals before pairing (Hund's rule). <b>Bond order</b> = ½ (bonding − antibonding electrons); 0 means no stable molecule.</p>
-    <p class="note"><b>Shapes</b> are one constant-value surface of ψ<sub>A</sub> ± ψ<sub>B</sub> built from hydrogen-like orbitals: pink is +, blue is −. The energy levels are schematic, showing order, not exact values.</p>
+    <p class="note"><b>Shapes</b> are drawn as in textbooks, not from a formula: s is a sphere and each p lobe a teardrop; in phase, lobes of the same colour merge into one cloud, out of phase the two sides are pushed apart by the nodal plane. Pink is +, blue is −. The energy levels are schematic, showing order, not exact values.</p>
   </aside>
 </div>
 
@@ -5892,31 +5892,60 @@ function fill(el, q) {
 const maxQ = el => 2 * ELS[el][1];                       // all valence electrons gone
 const minQ = el => -(levels(el).mo.reduce((s, m) => s + 2 * m.deg, 0) - 2 * ELS[el][1]); // every level full
 
-/* ---------- 3-D: isosurface of ψA ± ψB ---------- */
+/* ---------- 3-D: textbook shapes (no wavefunction formula) ----------
+   Atomic orbitals are drawn as in textbooks: s a sphere, each p lobe a teardrop (pointed at the nucleus, round
+   at the far end). An MO is built from those shapes: lobes of the same phase are blended into one smooth surface
+   (a sum of (R(û)/r)⁴ "blob" fields, R(û) = the lobe's outline), so in-phase lobes merge; in an antibonding MO
+   each atom's lobes are eased back from the nodal plane, so the two sides stay apart. */
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [], dirty = true;
 const Y = new THREE.Vector3(0, 1, 0);
-const D = 2.0, ISO = 0.085;
-const wS = (cx, a) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a);
-const wP = (cx, axis, sgn) => (x, y, z) => { const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / 0.5); };
-function moFns(shape, small) {
-  const a = small ? 0.42 : 0.55, xa = -D / 2, xb = D / 2, sg = shape.endsWith('+') ? 1 : -1;
-  let A, B;
-  if (shape.startsWith('ss')) { A = wS(xa, a); B = wS(xb, a); }
-  else if (shape.startsWith('pp')) { A = wP(xa, 0, 1); B = wP(xb, 0, -1); }   // + lobes facing each other
-  else { A = wP(xa, 1, 1); B = wP(xb, 1, 1); }                             // parallel p (π)
-  return {A, B, M: (x, y, z) => A(x, y, z) + sg * B(x, y, z), sg};
+const D_P = 2.0, D_S = 1.15, RS = 0.72, LP = 1.45;      // bond lengths (p / s MOs), s radius, p lobe length
+const Dof = m => (m.shape.startsWith('ss') ? D_S : D_P);
+let D = D_P;
+const TC = 0.3, TQ = 0.6, PW = 4, TEAR = t => (t <= TC ? 0 : Math.pow((t - TC) / (1 - TC), TQ));
+const sm = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+// one shape = {sg: +1/−1, f(x,y,z) ≥ 1 inside}
+const sphere = (cx, R, sg) => ({sg, f: (x, y, z) => { const r = Math.hypot(x - cx, y, z); if (r < 1e-6) return 1e6; const q = R / r, q2 = q * q; return q2 * q2; }});
+const lobe = (cx, ax, dir, L, sg) => ({sg, f: (x, y, z) => {   // p lobe along axis ax (0 x, 1 y, 2 z), direction dir
+  const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); if (r < 1e-6) return 0;
+  const c = dir * v[ax] / r; if (c <= 0) return 0;
+  const R = L * TEAR(Math.pow(c, PW)); if (R <= 0) return 0; const q = R / r, q2 = q * q; return q2 * q2; }});
+const pOrb = (cx, ax, sgPlus, L = LP, Lneg = L) => [lobe(cx, ax, 1, L, sgPlus), lobe(cx, ax, -1, Lneg, -sgPlus)];   // + lobe toward +ax
+const cloud = (cx, cy, rx, ry, rz, sg) => ({sg, f: (x, y, z) => {   // π band piece: an ellipsoid hovering above/below
+  if ((y >= 0) !== (cy >= 0)) return 0; const ex = (x - cx) / rx, ey = (y - cy) / ry, ez = z / rz, q2 = 1 / Math.max(1e-6, ex * ex + ey * ey + ez * ez); return q2 * q2; }});
+const keepSide = (sh, side) => ({sg: sh.sg, f: (x, y, z) => sh.f(x, y, z) * sm((side * x - 0.06) / 0.5)});   // antibonding: back off the node
+// the two atomic orbitals (A at −D/2, B at +D/2; B already multiplied by the MO's sign) and the MO itself
+function moShapes(m) {
+  const xa = -D / 2, xb = D / 2, sg = m.shape.endsWith('+') ? 1 : -1, sh = m.shape.slice(0, 2);
+  let A, B, M;
+  if (sh === 'ss') {
+    A = [sphere(xa, RS, 1)]; B = [sphere(xb, RS, sg)];
+    M = sg > 0 ? [...A, ...B] : [keepSide(A[0], -1), keepSide(B[0], 1)];
+  } else if (sh === 'pp') {   // + lobes facing each other
+    A = pOrb(xa, 0, 1); B = pOrb(xb, 0, -sg);
+    M = sg > 0 ? [lobe(xa, 0, 1, LP, 1), lobe(xb, 0, -1, LP, 1), lobe(xa, 0, -1, 0.75, -1), lobe(xb, 0, 1, 0.75, -1)]   // big middle, small ends
+               : [keepSide(lobe(xa, 0, 1, 1.05, 1), -1), keepSide(lobe(xb, 0, -1, 1.05, -1), 1), lobe(xa, 0, -1, LP, -1), lobe(xb, 0, 1, LP, 1)];   // small inner, big outer
+  } else {                    // π: parallel p along y
+    A = pOrb(xa, 1, 1, 1.35); B = pOrb(xb, 1, sg, 1.35);
+    if (sg > 0) { const cy = 0.82, rx = 1.0, ry = 0.55, rz = 0.66; M = [cloud(xa, cy, rx, ry, rz, 1), cloud(xb, cy, rx, ry, rz, 1), cloud(xa, -cy, rx, ry, rz, -1), cloud(xb, -cy, rx, ry, rz, -1)]; }
+    else M = [...A.map(s => keepSide(s, -1)), ...B.map(s => keepSide(s, 1))];
+  }
+  return {A, B, M, sg};
 }
 const PH_POS = 0xF08AA6, PH_NEG = 0x5FA4E6;
-function iso(fn, op) {
-  const st = 0.075, x0 = -D / 2 - 2.5, x1 = D / 2 + 2.5, e = 2.2;
+function iso(shapes, op) {
+  const st = 0.07, x0 = -D / 2 - 2.2, x1 = D / 2 + 2.2, e = 2.0;
   const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil(2 * e / st) + 1, nz = ny;
-  const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz);
-  let k = 0;
-  for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
-    const f = fn(x0 + xi * st, -e + yi * st, -e + zi * st); P[k] = f - ISO; N[k] = -f - ISO;
-  }
   const out = [];
-  for (const [F, col] of [[P, PH_POS], [N, PH_NEG]]) {
+  for (const [sgn, col] of [[1, PH_POS], [-1, PH_NEG]]) {
+    const ss = shapes.filter(s => s.sg === sgn); if (!ss.length) continue;
+    const F = new Float32Array(nx * ny * nz);
+    let k = 0;
+    for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
+      const x = x0 + xi * st, y = -e + yi * st, z = -e + zi * st; let v = 0;
+      for (const s of ss) v += s.f(x, y, z);
+      F[k] = v - 1;
+    }
     const {pos, idx} = window.SurfaceNets(F, nx, ny, nz, [x0, -e, -e], st);
     if (!idx.length) continue;
     const g = new THREE.BufferGeometry();
@@ -5971,7 +6000,7 @@ function selMO() { const L = levels(S.el); return L.mo.find(m => m.id === S.sel)
 function build() {
   dispose(model); model = new THREE.Group(); scene.add(model);
   $('#mLabels').innerHTML = ''; labs = [];
-  const L = levels(S.el), m = selMO(), f = moFns(m.shape, L.small);
+  const L = levels(S.el), m = selMO(); D = Dof(m); const f = moShapes(m);
   const A = new THREE.Vector3(-D / 2, 0, 0), B = new THREE.Vector3(D / 2, 0, 0);
   for (const P of [A, B]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.copy(P); nu.renderOrder = 3; model.add(nu); }
   const ax = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-D / 2 - 2.6, 0, 0), new THREE.Vector3(D / 2 + 2.6, 0, 0)]), new THREE.LineBasicMaterial({color: 0x2A2F38, depthTest: false, transparent: true, opacity: 0.9}));
@@ -5981,9 +6010,9 @@ function build() {
   // the two atomic orbitals being combined, drawn as outlines beside the molecule
   if (S.aos) {
     const off = aoOff(m), spread = 1.3;
-    for (const [fn, side, sg] of [[f.A, -1, 1], [f.B, 1, f.sg]]) {
+    for (const [shapes, side] of [[f.A, -1], [f.B, 1]]) {
       const g = new THREE.Group();
-      for (const mesh of iso((x, y, z) => sg * fn(x, y, z), 0.42)) g.add(mesh);
+      for (const mesh of iso(shapes, 0.42)) g.add(mesh);
       g.position.set(side * spread, -off, 0); model.add(g);
     }
     if (S.lbl) {
