@@ -617,6 +617,7 @@ body.side-off .app > .panel{display:none}
 .mnotes p:first-child{margin-top:12px}
 .borb .mb{font:500 11px var(--f-body);color:#A9C1FF;border:1px solid rgba(169,193,255,.4);border-radius:999px;padding:1px 7px;margin-left:6px}
 .borb .mx{font:500 11px var(--f-body);color:#FF8A80;border:1px solid rgba(255,138,128,.4);border-radius:999px;padding:1px 7px;margin-left:6px}
+.mel{font-weight:400;color:#FFD27A;margin-left:4px;letter-spacing:-1px}
 .mop{position:absolute;left:0;top:0;font:700 22px/1 var(--f-body);color:var(--fg);pointer-events:none;will-change:transform}
 @media (max-width:760px){ #mViewer{height:62svh;min-height:360px} #mApp .qtitle{max-width:calc(100vw - 150px)} }
 </style>
@@ -1408,6 +1409,7 @@ body.side-off .app > .panel{display:none}
     <section aria-label="Display" class="ctl">
       <h2 class="sec-h" style="margin-bottom:0">Display</h2>
       <div class="toggles">
+        <label class="sw" title="Every MO at once: bonding on the left, antibonding on the right, lowest energy at the bottom"><input type="checkbox" id="mAll">Show all orbitals</label>
         <label class="sw" title="The two atomic orbitals that combine, drawn below the molecule"><input type="checkbox" id="mAos">Combining AOs</label>
         <label class="sw"><input type="checkbox" id="mNode">Nodal plane</label>
         <label class="sw"><input type="checkbox" id="mLbl">Labels</label>
@@ -5867,7 +5869,7 @@ window.initVBT = function () {
 (function () {
 const $ = s => document.querySelector(s);
 const KEY = 'aov.mo';
-const S = {mode: 'gen', el: 'O', q: 0, shell: 2, ne: 12, mix: false, sel: 'pix', aos: true, node: true, lbl: true, spin: false};   // mode: 'gen' generic / 'mol' named molecules
+const S = {mode: 'gen', el: 'O', q: 0, shell: 2, ne: 12, mix: false, sel: 'pix', all: false, aos: true, node: true, lbl: true, spin: false};   // mode: 'gen' generic / 'mol' named molecules
 // element: [Z, valence electrons]
 const ELS = {H: [1, 1], He: [2, 2], Li: [3, 1], Be: [4, 2], B: [5, 3], C: [6, 4], N: [7, 5], O: [8, 6], F: [9, 7], Ne: [10, 8]};
 const NAMES = {
@@ -5975,7 +5977,24 @@ function initScene() {
   loop();
 }
 const aoOff = m => (m.shape.startsWith('pi') ? 4.7 : 3.3);   // π orbitals are tall: leave more room
+// "show all": bonding MOs in the left column, antibonding on the right, rows from low to high energy
+function allLayout() {
+  const L = levels(), bond = L.mo.filter(m => m.bond > 0).sort((a, b) => b.y - a.y), rows = [];
+  let y = 0;
+  for (const b of bond) {
+    const x = L.mo.find(m => m.id === b.id + 'x'), h = b.shape.startsWith('pi') ? 4.4 : 3.2;
+    y += h / 2; rows.push({b, x, y}); y += h / 2;
+  }
+  return {rows, H: y, W: D + 6.4};
+}
+let lastLayout = '';
 function fit() {
+  if (S.all) {
+    const {H, W} = allLayout(), d = Math.max((H + 3) * 1.75, (2 * W + 5) / Math.max(0.6, camera.aspect || 1) * 1.7) + 2;
+    controls.target.set(0, H / 2, 0);
+    camera.position.copy(new THREE.Vector3(0.12, 0.25, 1).normalize().multiplyScalar(d).add(controls.target)); controls.update();
+    return;
+  }
   const off = aoOff(selMO()), d = (S.aos ? 11.8 + off : 11.5) / Math.min(1, (camera.aspect || 1) * 0.95);
   controls.target.set(0, S.aos ? -off / 2 : 0, 0);
   camera.position.copy(new THREE.Vector3(0.2, 0.42, 1).normalize().multiplyScalar(d).add(controls.target)); controls.update();
@@ -5995,6 +6014,7 @@ function selMO() { const L = levels(); return L.mo.find(m => m.id === S.sel) || 
 function build() {
   dispose(model); model = new THREE.Group(); scene.add(model);
   $('#mLabels').innerHTML = ''; labs = [];
+  if (S.all) { buildAll(); return; }
   const L = levels(), m = selMO(), f = moFns(m.shape, L.small);
   const A = new THREE.Vector3(-D / 2, 0, 0), B = new THREE.Vector3(D / 2, 0, 0);
   for (const P of [A, B]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.copy(P); nu.renderOrder = 3; model.add(nu); }
@@ -6029,6 +6049,23 @@ function build() {
     label(S.mode === 'mol' ? esc(S.el) : 'B', B.clone().add(new THREE.Vector3(0, 0.38, 0.35)), 'blab dim');
     label(m.name.replace('*', '<sup>*</sup>'), new THREE.Vector3(0, m.shape.startsWith('pi') ? 1.6 : 1.25, 0), m.bond > 0 ? 'bsig' : 'bsig pi');
   }
+}
+
+function buildAll() {
+  const L = levels(), r = fill(), {rows, W} = allLayout(), arrows = n => (n === 2 ? '↑↓' : n === 1 ? '↑' : '');
+  const put = (m, cx, cy) => {
+    const g = new THREE.Group(), f = moFns(m.shape, L.small);
+    for (const mesh of iso(f.M, 0.9)) g.add(mesh);
+    for (const sx of [-D / 2, D / 2]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.set(sx, 0, 0); nu.renderOrder = 3; g.add(nu); }
+    if (S.node && m.bond < 0) { const disk = new THREE.Mesh(new THREE.CircleGeometry(1.5, 40), new THREE.MeshBasicMaterial({color: 0xE3E6EB, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false})); disk.rotation.y = Math.PI / 2; g.add(disk); }
+    g.position.set(cx, cy, 0); model.add(g);
+    if (S.lbl) {
+      const e = r.occ[m.id].map(arrows).filter(Boolean).join(' ');
+      label(`${m.name.replace('*', '<sup>*</sup>')}${e ? ` <span class="mel">${e}</span>` : ''}`, new THREE.Vector3(cx, cy - (m.shape.startsWith('pi') ? 1.95 : 1.35), 0), m.bond > 0 ? 'bsig' : 'bsig pi');
+    }
+  };
+  for (const {b, x, y} of rows) { put(b, -W / 2, y); if (x) put(x, W / 2, y); }
+  if (S.lbl) { const top = rows.length ? rows[rows.length - 1].y + 2.4 : 2; label('bonding', new THREE.Vector3(-W / 2, top, 0), 'blab dim'); label('antibonding', new THREE.Vector3(W / 2, top, 0), 'blab dim'); }
 }
 
 /* ---------- MO diagram (SVG) ---------- */
@@ -6129,10 +6166,13 @@ function render(reset) {
     ${kind === 'σ' ? 'σ: symmetric around the bond axis.' : 'π: made from side-on p orbitals; density above and below the axis, none on it.'}${m.deg === 2 ? ' There are two of these, at 90° to each other, with the same energy.' : ''}</p>
     <p class="bmut">Holds ${n} of ${2 * m.deg} possible electron${m.deg * 2 === 1 ? '' : 's'}.</p>`;
   $('#mTitle').innerHTML = `${formula}${name ? ` <span class="bh">${esc(name)}</span>` : ''}`;
-  $('#mSub').innerHTML = `bond order <b>${frac(bo)}</b> · ${r.unp ? `<b>${r.unp}</b> unpaired · paramagnetic` : 'diamagnetic'} · showing <b>${m.name}</b>`;
-  for (const [id, k] of [['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).checked = S[k];
+  $('#mSub').innerHTML = `bond order <b>${frac(bo)}</b> · ${r.unp ? `<b>${r.unp}</b> unpaired · paramagnetic` : 'diamagnetic'} · showing <b>${S.all ? 'all orbitals' : m.name}</b>`;
+  for (const [id, k] of [['#mAll', 'all'], ['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).checked = S[k];
+  $('#mAos').disabled = S.all;
   dirty = true;
-  if (reset) fit();
+  const lk = S.all + '|' + S.shell + '|' + S.mix;   // refit when the show-all layout changes
+  if (reset || (S.all && lk !== lastLayout)) fit();
+  lastLayout = lk;
 }
 function bind() {
   $('#mMode').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mode = b.dataset.m; save(); render(false); });
@@ -6143,10 +6183,10 @@ function bind() {
   $('#mMix').addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mix = !!+b.dataset.m; save(); render(false); });
   $('#mQm').addEventListener('click', () => { S.ne--; save(); render(false); });
   $('#mQp').addEventListener('click', () => { S.ne++; save(); render(false); });
-  const pick = e => { const g = e.target.closest('[data-id]'); if (!g) return; const was = aoOff(selMO()); S.sel = g.dataset.id; save(); render(aoOff(selMO()) !== was && S.aos); };
+  const pick = e => { const g = e.target.closest('[data-id]'); if (!g) return; const was = aoOff(selMO()), wasAll = S.all; S.sel = g.dataset.id; S.all = false; save(); render(wasAll || (aoOff(selMO()) !== was && S.aos)); };
   $('#mDiag').addEventListener('click', pick);
   $('#mDiag').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); } });
-  for (const [id, k] of [['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k === 'aos') { fit(); } dirty = true; });
+  for (const [id, k] of [['#mAll', 'all'], ['#mAos', 'aos'], ['#mNode', 'node'], ['#mLbl', 'lbl'], ['#mSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); if (k === 'aos' || k === 'all') { render(true); } dirty = true; });
   $('#mReset').addEventListener('click', fit);
 }
 window.initMO = function () {
