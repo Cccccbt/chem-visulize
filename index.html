@@ -5516,6 +5516,86 @@ function bondParts() { // [{id, name, role, fn, color}]
   if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, makes two more sausages in front of and behind the axis', fn: add(wfPi(xa, 2, 1), wfPi(xb, 2, 1)), color: '#FFB86C'});
   return out;
 }
+/* ---------- bonding orbital = the Overlap-view orbitals, merged ----------
+   Same orbitals, sizes, teardrop shapes and colours as the Overlap view. Lobes of the same phase that belong to
+   the same bond (σ, π or 2nd π) are blended into one smooth surface (a sum of (R(û)/r)⁴ "blob" fields); every
+   other lobe keeps exactly its Overlap-view shape. Colour follows whichever orbital dominates at each point. */
+function bondSpec(d) {
+  const A = new THREE.Vector3(-d / 2, 0, 0), B = new THREE.Vector3(d / 2, 0, 0), out = [];
+  const one = c => [new THREE.Color(c), new THREE.Color(c)];
+  const sC = [1, 0, 0, 0, 0, 0], pxN = [0, -1, 0, 0, 0, 0], pzC = [0, 0, 0, 1, 0, 0], pyC = [0, 0, 1, 0, 0, 0];
+  const cs5 = 0.5, cp5 = Math.sqrt(0.75), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];
+  const it = (g, c, L, at, cols) => out.push({g, c, L, at, cols});
+  const k = S.type;
+  if (k === 'ss') { it('σ', sC, 0.95, A, one(TB_S)); it('σ', sC, 0.95, B, one(TB_S)); }
+  else if (k === 'sp') { it('σ', sC, 0.95, A, one(TB_S)); it('σ', pxN, 1.4, B, one(TB_P)); }
+  else if (k === 'pp') { it('σ', pFace, 1.45, A, one(TB_P)); it('σ', pFaceB, 1.45, B, one(TB_P)); }
+  else if (k === 'pi') { it('π', pzC, 1.3, A, one(TB_P)); it('π', pzC, 1.3, B, one(TB_P)); }
+  else {
+    const hy = (k === 'db' ? V.HYB.sp2 : V.HYB.sp)[0], flip = c => c.map((x, i) => (i === 1 ? -x : x));
+    it('σ', hy, 1.3, A, phaseCols(COLS.hyb)); it('σ', flip(hy), 1.3, B, phaseCols(COLS.hyb));
+    it('π', pzC, 1.1, A, phaseCols(COLS.left)); it('π', pzC, 1.1, B, phaseCols(COLS.left));
+    if (k === 'tb') { it('π2', pyC, 1.1, A, phaseCols(COLS.left)); it('π2', pyC, 1.1, B, phaseCols(COLS.left)); }
+  }
+  if (canPi() && S.npi >= 1) { it('π', pzC, 1.2, A, one(TB_P)); it('π', pzC, 1.2, B, one(TB_P)); }
+  if (canPi() && S.npi >= 2) { it('π2', pyC, 1.2, A, one(TB_P)); it('π2', pyC, 1.2, B, one(TB_P)); }
+  // side-on p lobes don't reach each other, so for a π bond each lobe is drawn out along the axis toward its
+  // partner: the + lobes join into one band above, the − lobes into one below (fully once at the bond length)
+  const w = Math.max(0, Math.min(1, (TT().r0 + 1.2 - d) / 1.2));
+  for (const o of out) if (o.g !== 'σ') { o.ext = (d / 2) * w; o.dir = o.at.x < 0 ? 1 : -1; }
+  return out;
+}
+const lobeCache = new Map();
+function lobeInfo(c) {   // the same per-lobe numbers orbital() uses: lobe axes and relative lobe lengths
+  const key = c.join(','); if (lobeCache.has(key)) return lobeCache.get(key);
+  const base = UNIT.attributes.position; let mp = 1e-9, mn = 1e-9;
+  for (let i = 0; i < base.count; i++) { const f = V.evalF(c, toC(base.getX(i), base.getY(i), base.getZ(i))); if (f > mp) mp = f; if (-f > mn) mn = -f; }
+  const fmax = Math.max(mp, mn), one = Math.abs(c[1]) + Math.abs(c[2]) + Math.abs(c[3]) > 1e-6;
+  const o = {mp, mn, kp: mp / fmax, kn: mn / fmax, one, dp: one ? V.lobeDir(c).dir : null, dn: one ? V.lobeDir(c.map(x => -x)).dir : null};
+  lobeCache.set(key, o); return o;
+}
+// (R(û)/r)⁴ for one lobe (sign sg) of an item: ≥ 1 inside the Overlap-view surface, falling off quickly outside
+function blob(item, info, sg, x, y, z) {
+  let vx = x - item.at.x; const vy = y - item.at.y, vz = z - item.at.z;
+  if (item.ext) { const t = vx * item.dir; if (t > 0) vx = Math.max(0, t - item.ext) * item.dir; }   // π: extruded toward the partner
+  const r = Math.hypot(vx, vy, vz);
+  if (r < 1e-6) return 0;
+  const u = toC(vx / r, vy / r, vz / r), f = V.evalF(item.c, u), pw = S.pow * S.lobe * S.lobe;
+  if ((f >= 0) !== (sg > 0)) return 0;
+  let R;
+  if (info.one) { const w = f >= 0 ? info.dp : info.dn, cs = Math.max(0, u[0] * w[0] + u[1] * w[1] + u[2] * w[2]); R = item.L * (f >= 0 ? info.kp : info.kn) * TEAR(Math.pow(cs, pw)); }
+  else R = item.L * info.kp * TEAR(Math.pow(Math.abs(f) / (f >= 0 ? info.mp : info.mn), pw));
+  if (R <= 0) return 0;
+  const q = R / r, q2 = q * q; return q2 * q2;
+}
+function bondMeshes(items, box, st, opacity) {
+  const [x0, x1, y0, y1, z0, z1] = box;
+  const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil((y1 - y0) / st) + 1, nz = Math.ceil((z1 - z0) / st) + 1;
+  const infos = items.map(o => lobeInfo(o.c)), out = [];
+  for (const sg of [1, -1]) {
+    const F = new Float32Array(nx * ny * nz);
+    let k = 0, any = false;
+    for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
+      const x = x0 + xi * st, y = y0 + yi * st, z = z0 + zi * st;
+      let v = 0; for (let i = 0; i < items.length; i++) v += blob(items[i], infos[i], sg, x, y, z);
+      F[k] = v - 1; if (v > 1) any = true;
+    }
+    if (!any) continue;
+    const {pos, idx} = surfaceNets(F, nx, ny, nz, [x0, y0, z0], st);
+    if (!idx.length) continue;
+    const col = new Float32Array(pos.length), c = new THREE.Color();
+    for (let j = 0; j < pos.length; j += 3) {   // blend the orbitals' colours by how much each contributes here
+      let wsum = 0, r = 0, g = 0, b = 0;
+      for (let i = 0; i < items.length; i++) { const w = blob(items[i], infos[i], sg, pos[j], pos[j + 1], pos[j + 2]); if (!w) continue; const cc = items[i].cols[sg > 0 ? 0 : 1]; r += w * cc.r; g += w * cc.g; b += w * cc.b; wsum += w; }
+      if (wsum > 0) { col[j] = r / wsum; col[j + 1] = g / wsum; col[j + 2] = b / wsum; } else { c.copy(items[0].cols[sg > 0 ? 0 : 1]); col[j] = c.r; col[j + 1] = c.g; col[j + 2] = c.b; }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.setIndex(idx); geo.computeVertexNormals();
+    out.push(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors: true, transparent: true, opacity, depthWrite: false, side: THREE.FrontSide, shininess: 50, specular: 0x30343c})));
+  }
+  return out;
+}
 function buildBond() {
   const T = TT(), d = dCur, A = new THREE.Vector3(-d / 2, 0, 0), B = new THREE.Vector3(d / 2, 0, 0);
   // nuclei and the internuclear axis are drawn on top of the solid surfaces, as in textbook figures
@@ -5524,17 +5604,17 @@ function buildBond() {
   const axl = new THREE.Line(ax, new THREE.LineBasicMaterial({color: 0x2A2F38, depthTest: false, transparent: true, opacity: 0.9})); axl.renderOrder = 2; model.add(axl);
   if (S.lbl) label('internuclear axis', new THREE.Vector3(d / 2 + 2.6, 0.22, 0), 'blab dim');
   const moving = Math.abs(dCur - dGoal) > 1e-3 || dragging;
-  const ext = 2.1 * Math.max(1, S.lobe), st = (moving ? 0.13 : 0.075) * Math.max(1, S.lobe * 0.9), box = [-d / 2 - ext - 0.3, d / 2 + ext + 0.3, -ext, ext, -ext, ext];
+  const ext = 1.75, st = (moving ? 0.13 : 0.07) * Math.max(1, S.lobe * 0.9), box = [-d / 2 - ext - 0.3, d / 2 + ext + 0.3, -ext, ext, -ext, ext];
   const near = d < T.r0 + 0.35;
+  const spec = bondSpec(d);
   for (const part of bondParts()) {
     const a = vis(part.id);
     if (!a) continue;
-    // in double/triple bonds the π clouds are a little see-through so the σ core stays visible
-    const multi = S.type === 'db' || S.type === 'tb' || (canPi() && S.npi > 0);
-    for (const m of isoParts(part.fn, box, st, part.color, a === 1 ? (multi && part.id[0] === 'π' ? 0.72 : S.type === 'pi' ? 0.85 : 1) : a, S.type === 'pi')) model.add(m);
+    const items = spec.filter(o => o.g === part.id);
+    for (const m of bondMeshes(items, box, st, a === 1 ? 0.6 : a)) model.add(m);
     if (a !== 1 || !near) continue;
     if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
-    const pr = S.type === 'pi' ? [1.35, 0.85] : [1.75, 1.0];   // the double/triple-bond π sausages sit further out
+    const pr = [1.5, 0.8];
     if (part.id === 'π') { label('π', new THREE.Vector3(0, pr[0], 0), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, pr[1], 0))); model.add(dot(new THREE.Vector3(0.12, pr[1], 0))); } }
     if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, pr[0]), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, pr[1]))); model.add(dot(new THREE.Vector3(0.12, 0, pr[1]))); } }
   }
