@@ -5090,8 +5090,8 @@ const $ = s => document.querySelector(s);
 const KEY = 'aov.vbt';
 const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, col: 'phase', spread: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'sep', lobe: 1, pow: 2.2, npi: 0, sig: 'hyb'};
 const TYPES = {
-  ss: {name: 's–s', bond: 'σ', r0: 1.45, D: 1.0, desc: 'Two s orbitals are spheres, so they can only overlap along the line between the nuclei.'},
-  sp: {name: 's–p', bond: 'σ', r0: 1.85, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
+  ss: {name: 's–s', bond: 'σ', r0: 1.05, D: 1.0, desc: 'Two s orbitals are spheres, so they can only overlap along the line between the nuclei.'},
+  sp: {name: 's–p', bond: 'σ', r0: 1.6, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
   pp: {name: 'p–p end-on', bond: 'σ', r0: 2.25, D: 0.95, desc: 'Two p orbitals pointing at each other overlap head-on, along the bond axis.'},
   pi: {name: 'p–p side-on', bond: 'π', r0: 2.0, D: 0.55, desc: 'Two parallel p orbitals overlap side by side: above and below the bond axis, never on it.'},
   db: {name: 'double bond', bond: 'σ + π', r0: 1.85, D: 1.6, desc: 'sp² hybrids overlap head-on (σ). The leftover parallel p orbitals overlap side-on above and below (π).'},
@@ -5355,11 +5355,11 @@ function buildOv() {
   const addT = (id, c, L, col, at) => { const a = vis(id); if (!a) return false; model.add(orbital(c, L, col, {at, opacity: a === 1 ? 0.5 : a, cols: one(col)})); return a === 1; };
   const cs5 = 0.5, cp5 = Math.sqrt(0.75), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];
   if (S.type === 'ss') {
-    const a = addT('As', sC, 0.95, TB_S, A), b = addT('Bs', sC, 0.95, TB_S, B);
+    const a = addT('As', sC, S_R, TB_S, A), b = addT('Bs', sC, S_R, TB_S, B);
     lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, '1s', B.clone().add(new THREE.Vector3(0.6, 0.85, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.2, 0.25, 0.3)));
   } else if (S.type === 'sp') {
-    const a = addT('As', sC, 0.95, TB_S, A), b = addT('Bp', pxN, 1.4, TB_P, B);
+    const a = addT('As', sC, S_R, TB_S, A), b = addT('Bp', pxN, 1.4, TB_P, B);
     lab(a, '1s', A.clone().add(new THREE.Vector3(-0.6, 0.85, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(1.2, 0.5, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0.2, 0.25, 0.3))); e1(b, B.clone().add(new THREE.Vector3(-0.9, 0, 0)));
   } else if (S.type === 'pp') {
@@ -5438,7 +5438,7 @@ function nodalPlane(d) {
   pl.rotation.x = -Math.PI / 2; model.add(pl);
   if (S.lbl) label('nodal plane', new THREE.Vector3(-d / 2 - 1.9, 0.12, 1.4), 'blab dim');
 }
-const TB_S = '#F4A6C6', TB_P = '#8CCFEA';   // textbook overlap pictures: s pink, p light blue
+const TB_S = '#F4A6C6', TB_P = '#8CCFEA', S_R = 0.7;   // s sphere radius ≈ 0.5 × a p lobe, as in textbook figures   // textbook overlap pictures: s pink, p light blue
 // side-on π: p lobes drawn out a little along the bond so the two merge into one curved band above and one below
 const wfPb = cx => (x, y, z) => { const X = (x - cx) / 1.3, r = Math.hypot(X, y, z); return 1.732 * y * Math.exp(-r / AP); };
 const ISO = 0.21;
@@ -5527,8 +5527,8 @@ function bondSpec(d) {
   const cs5 = 0.5, cp5 = Math.sqrt(0.75), pFace = [cs5, cp5, 0, 0, 0, 0], pFaceB = [cs5, -cp5, 0, 0, 0, 0];
   const it = (g, c, L, at, cols) => out.push({g, c, L, at, cols});
   const k = S.type;
-  if (k === 'ss') { it('σ', sC, 0.95, A, one(TB_S)); it('σ', sC, 0.95, B, one(TB_S)); }
-  else if (k === 'sp') { it('σ', sC, 0.95, A, one(TB_S)); it('σ', pxN, 1.4, B, one(TB_P)); }
+  if (k === 'ss') { it('σ', sC, S_R, A, one(TB_S)); it('σ', sC, S_R, B, one(TB_S)); }
+  else if (k === 'sp') { it('σ', sC, S_R, A, one(TB_S)); it('σ', pxN, 1.4, B, one(TB_P)); }
   else if (k === 'pp') { it('σ', pFace, 1.45, A, one(TB_P)); it('σ', pFaceB, 1.45, B, one(TB_P)); }
   else if (k === 'pi') { it('π', pzC, 1.3, A, one(TB_P)); it('π', pzC, 1.3, B, one(TB_P)); }
   else {
@@ -5542,7 +5542,10 @@ function bondSpec(d) {
   // side-on p lobes don't reach each other, so for a π bond each lobe is drawn out along the axis toward its
   // partner: the + lobes join into one band above, the − lobes into one below (fully once at the bond length)
   const w = Math.max(0, Math.min(1, (TT().r0 + 1.2 - d) / 1.2));
-  for (const o of out) if (o.g !== 'σ') { o.ext = (d / 2) * w; o.dir = o.at.x < 0 ? 1 : -1; o.bend = 0.4 * w; o.half = d / 2; o.ax = o.g === 'π' ? 1 : 2; }
+  // π: as the atoms reach the bond length each p lobe turns into a cloud hovering above (below) its nucleus, and the
+  // two clouds fuse into one band: rounded at both ends, slightly waisted in the middle, clear of the axis (textbook figure)
+  const r0 = TT().r0;
+  for (const o of out) if (o.g !== 'σ') { o.w = w; o.ax = o.g === 'π' ? 1 : 2; o.cy = 0.64 * o.L; o.ry = 0.42 * o.L; o.rz = 0.5 * o.L; o.rx = Math.max(0.45 * o.L, 0.52 * r0); }
   return out;
 }
 const lobeCache = new Map();
@@ -5556,13 +5559,14 @@ function lobeInfo(c) {   // the same per-lobe numbers orbital() uses: lobe axes 
 }
 // (R(û)/r)⁴ for one lobe (sign sg) of an item: ≥ 1 inside the Overlap-view surface, falling off quickly outside
 function blob(item, info, sg, x, y, z) {
-  if (item.bend) {   // π: bow the band into an arc — raised between the nuclei, inner edge more than outer, so it thins there
-    const h = item.bend * Math.max(0, 1 - (x / item.half) ** 2);
-    if (h > 0) { const a = item.ax === 1 ? y : z, m = Math.abs(a), k = h * (1 - 0.5 * Math.min(1, Math.max(0, (m - 0.4) / 1.2))), na = Math.sign(a) * Math.max(0, m - k); if (item.ax === 1) y = na; else z = na; }
+  if (item.w) {   // π near the bond length: blend the teardrop lobe into a hovering ellipsoidal cloud (see bondSpec)
+    const a = item.ax === 1 ? y : z, b = item.ax === 1 ? z : y;
+    let gc = 0;
+    if ((a >= 0) === (sg > 0)) { const ex = (x - item.at.x) / item.rx, ey = (Math.abs(a) - item.cy) / item.ry, ez = b / item.rz, q2 = 1 / Math.max(1e-6, ex * ex + ey * ey + ez * ez); gc = q2 * q2; }
+    const w = item.w; item.w = 0; const gt = w < 1 ? blob(item, info, sg, x, y, z) : 0; item.w = w;
+    return (1 - w) * gt + w * gc;
   }
-  let vx = x - item.at.x; const vy = y - item.at.y, vz = z - item.at.z;
-  if (item.ext) { const t = vx * item.dir; if (t > 0) vx = Math.max(0, t - item.ext) * item.dir; }   // π: extruded toward the partner
-  const r = Math.hypot(vx, vy, vz);
+  const vx = x - item.at.x, vy = y - item.at.y, vz = z - item.at.z, r = Math.hypot(vx, vy, vz);
   if (r < 1e-6) return 0;
   const u = toC(vx / r, vy / r, vz / r), f = V.evalF(item.c, u), pw = S.pow * S.lobe * S.lobe;
   if ((f >= 0) !== (sg > 0)) return 0;
@@ -5618,7 +5622,7 @@ function buildBond() {
     for (const m of bondMeshes(items, box, st, a === 1 ? 0.6 : a)) model.add(m);
     if (a !== 1 || !near) continue;
     if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
-    const pr = [1.5, 0.8];
+    const pr = [1.45, 0.62];
     if (part.id === 'π') { label('π', new THREE.Vector3(0, pr[0], 0), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, pr[1], 0))); model.add(dot(new THREE.Vector3(0.12, pr[1], 0))); } }
     if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, pr[0]), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, pr[1]))); model.add(dot(new THREE.Vector3(0.12, 0, pr[1]))); } }
   }
