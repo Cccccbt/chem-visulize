@@ -5922,8 +5922,10 @@ const maxE = () => levels().mo.reduce((s, m) => s + 2 * m.deg, 0);   // every le
 /* ---------- 3-D: isosurface of ψA ± ψB ---------- */
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [], dirty = true;
 const Y = new THREE.Vector3(0, 1, 0);
-const D0 = 2.0, D_FAR = 5.6, ISO = 0.085;
-let D = D0, animT0 = 0;   // formation animation: the atoms move in from D_FAR to D0
+const D_FAR = 5.6, ISO = 0.085;
+// bond length: 1s orbitals are smaller and sit closer (H₂ 0.74 Å) than 2s/2p, so their in-phase sum merges
+const baseD = () => (levels().small ? 1.45 : 2.0);
+let D = 2.0, animT0 = 0;   // formation animation: the atoms move in from D_FAR to D0
 const wS = (cx, a) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a);
 const wP = (cx, axis, sgn) => (x, y, z) => { const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / 0.5); };
 function moFns(shape, small) {
@@ -5974,8 +5976,8 @@ function initScene() {
     if ($('#mApp').hidden) return;
     if (animT0) {   // formation: ease the separation down; the MO surface forms as the atoms close in
       const f = Math.min(1, (now - animT0) / 2800), e = f * f * (3 - 2 * f);
-      D = D_FAR + (D0 - D_FAR) * e; dirty = true;
-      if (f >= 1) { animT0 = 0; D = D0; $('#mAnim').disabled = false; }
+      D = D_FAR + (baseD() - D_FAR) * e; dirty = true;
+      if (f >= 1) { animT0 = 0; D = baseD(); $('#mAnim').disabled = false; }
     }
     if (dirty) { dirty = false; build(); }
     controls.autoRotate = S.spin;
@@ -6021,6 +6023,7 @@ function selMO() { const L = levels(); return L.mo.find(m => m.id === S.sel) || 
 function build() {
   dispose(model); model = new THREE.Group(); scene.add(model);
   $('#mLabels').innerHTML = ''; labs = [];
+  if (!animT0) D = baseD();
   if (S.all) { buildAll(); return; }
   const L = levels(), m = selMO(), f = moFns(m.shape, L.small);
   const A = new THREE.Vector3(-D / 2, 0, 0), B = new THREE.Vector3(D / 2, 0, 0);
