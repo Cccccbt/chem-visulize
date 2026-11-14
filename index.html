@@ -1286,6 +1286,15 @@ body.side-off .app > .panel{display:none}
     </div>
 
     <div id="bOv" class="bcol" hidden>
+      <section aria-label="Bond formation demo">
+        <h2 class="sec-h">Bond formation demo</h2>
+        <div class="seg" role="group" aria-label="Play a bond forming" id="bDemo" style="grid-template-columns:repeat(3,1fr)">
+          <button type="button" data-k="sb" title="Ethane: sp³–sp³, one σ bond">Single<br><small>C–C</small></button>
+          <button type="button" data-k="db" title="Ethene: sp²–sp², σ + π">Double<br><small>C=C</small></button>
+          <button type="button" data-k="tb" title="Ethyne: sp–sp, σ + 2π">Triple<br><small>C≡C</small></button>
+        </div>
+        <p class="bmut" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Two carbon atoms come together: the orbitals overlap, then the view switches to the bonding orbitals that form.</p>
+      </section>
       <section aria-label="Overlap">
         <h2 class="sec-h">Overlap</h2>
         <div class="bchips" id="bType"></div>
@@ -5080,6 +5089,7 @@ const TYPES = {
   sp: {name: 's–p', bond: 'σ', r0: 1.5, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
   pp: {name: 'p–p end-on', bond: 'σ', r0: 2.25, D: 0.95, desc: 'Two p orbitals pointing at each other overlap head-on, along the bond axis.'},
   pi: {name: 'p–p side-on', bond: 'π', r0: 2.0, D: 0.55, desc: 'Two parallel p orbitals overlap side by side: above and below the bond axis, never on it.'},
+  sb: {name: 'single bond', bond: 'σ', r0: 2.0, D: 0.9, desc: 'sp³ hybrids on the two carbons overlap head-on: one σ bond and nothing else. Example: ethane, H₃C–CH₃.'},
   db: {name: 'double bond', bond: 'σ + π', r0: 1.85, D: 1.6, desc: 'sp² hybrids overlap head-on (σ). The leftover parallel p orbitals overlap side-on above and below (π).'},
   tb: {name: 'triple bond', bond: 'σ + 2π', r0: 1.7, D: 2.0, desc: 'sp hybrids overlap head-on (σ). Two pairs of leftover p orbitals, at right angles, overlap side-on (2 π).'}
 };
@@ -5088,6 +5098,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', 
 
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [];
 let camGoal = null, dragging = false, spreadT = 0;
+let demo = false, demoAt = 0, demoT0 = 0;   // bond formation demo: approach in the Overlap view, then switch to Bonding orbital
 let mixT = 0, mixGoal = 0, bondB = 0, bondGoal = 0, dCur = 3.2, dGoal = 3.2, dirty = true, last = 0;
 const HOME = new THREE.Vector3(0.75, 0.55, 1).normalize();
 const Y = new THREE.Vector3(0, 1, 0);
@@ -5125,10 +5136,12 @@ function initScene() {
     const ease = (a, b, k) => { const n = a + (b - a) * Math.min(1, dt * k); return Math.abs(b - n) < 0.006 ? b : n; };
     const m0 = mixT, b0 = bondB, d0 = dCur;
     const s0 = spreadT;
-    mixT = ease(mixT, mixGoal, 4); bondB = ease(bondB, bondGoal, 4); dCur = ease(dCur, dGoal, 3); spreadT = ease(spreadT, spreadGoal(), 4);
+    mixT = ease(mixT, mixGoal, 4); bondB = ease(bondB, bondGoal, 4); if (demo && demoT0) { const f = Math.min(1, (now - demoT0) / 2600), e = f * f * (3 - 2 * f); dCur = f >= 1 ? dGoal : 4.4 + (dGoal - 4.4) * e; }   // demo: a timed 2.6 s approach
+    else dCur = ease(dCur, dGoal, 3); spreadT = ease(spreadT, spreadGoal(), 4);
     if (spreadT !== s0) dirty = true;
     if (mixT !== m0 || bondB !== b0 || dCur !== d0) dirty = true;
     if (d0 !== dCur && dCur === dGoal) dirty = true;
+    if (demo && S.mode === 'ov' && dCur === dGoal) { if (!demoAt) demoAt = now; else if (now - demoAt > 700) { demo = false; demoAt = 0; demoT0 = 0; S.ovView = 'bond'; save(); render(false); } }
     if (dirty) { dirty = false; build(); if (S.mode === 'ov') { drawChart(); renderOvRead(); } }
     if (camGoal != null) { // glide the camera in or out along its current direction
       const off = camera.position.clone().sub(controls.target), L = off.length(), nL = L + (camGoal - L) * Math.min(1, dt * 3);
@@ -5294,6 +5307,8 @@ function buildHyb() {
 
 /* ---------- σ and π overlap ---------- */
 // any of the three σ overlaps (s–s, s–p, p–p end-on) can carry 0, 1 or 2 extra π bonds from side-on p orbitals
+const hyTow = k => (k === 'db' ? V.HYB.sp2[0] : k === 'tb' ? V.HYB.sp[0] : [0.5, Math.sqrt(0.75), 0, 0, 0, 0]);   // sp² / sp / sp³ hybrid along +x
+const hyName = k => (k === 'db' ? 'sp²' : k === 'tb' ? 'sp' : 'sp³');
 const canPi = () => S.type === 'ss' || S.type === 'sp' || S.type === 'pp';
 const curN = () => (S.type === 'db' ? 1 : S.type === 'tb' ? 2 : canPi() ? (S.npi || 0) : 0);   // π count of a σ + π / σ + 2π choice
 const nPi = () => (S.type === 'tb' ? 2 : S.type === 'db' || S.type === 'pi' ? 1 : canPi() ? (S.npi || 0) : 0);
@@ -5315,9 +5330,8 @@ function ovOrbs() {
   if (canPi() && S.npi >= 1) pair('z', 'p <small>π</small>', 'parallel to the other atom\'s p, at right angles to the bond: side-on overlap → π');
   if (canPi() && S.npi >= 2) pair('y', 'p <small>2nd π</small>', 'the second pair of p orbitals, at 90° to the first: another side-on overlap → second π');
   else {
-    const hy = k === 'db' ? 'sp²' : 'sp';
-    pair('h', hy, 'the hybrid pointing at the other atom: head-on overlap → σ');
-    pair('z', 'p', 'unhybridized, perpendicular to the hybrids: side-on overlap → π');
+    pair('h', hyName(k), 'the hybrid pointing at the other atom: head-on overlap → σ');
+    if (k !== 'sb') pair('z', 'p', 'unhybridized, perpendicular to the hybrids: side-on overlap → π');
     if (k === 'tb') pair('y', 'p', 'the second unhybridized p, at 90° to the first: another side-on overlap → second π');
   }
   return out;
@@ -5355,8 +5369,8 @@ function buildOv() {
     lab(a, 'p', A.clone().add(new THREE.Vector3(-0.5, 1.5, 0))); lab(b, 'p', B.clone().add(new THREE.Vector3(0.5, 1.5, 0)));
     e1(a, A.clone().add(new THREE.Vector3(0, 0.9, 0)), X1); e1(b, B.clone().add(new THREE.Vector3(0, -0.9, 0)), X1);
   } else {
-    const sp2 = S.type === 'db';
-    const hy = sp2 ? V.HYB.sp2 : V.HYB.sp;
+    const sp2 = S.type === 'db', sb = S.type === 'sb';
+    const hy = [hyTow(S.type)];
     const flip = c => c.map((x, k) => (k === 1 ? -x : x));
     let aH = false, bH = false;
     hy.forEach((c, i) => {
@@ -5373,13 +5387,13 @@ function buildOv() {
       }
     });
     e1(aH, A.clone().add(new THREE.Vector3(0.75, 0, 0))); e1(bH, B.clone().add(new THREE.Vector3(-0.75, 0, 0)));
-    const az = add('Az', pzC, 1.1, COLS.left, A, 0.5), bz = add('Bz', pzC, 1.1, COLS.left, B, 0.5);
+    const az = !sb && add('Az', pzC, 1.1, COLS.left, A, 0.5), bz = !sb && add('Bz', pzC, 1.1, COLS.left, B, 0.5);
     e1(az, A.clone().add(new THREE.Vector3(0, 0.8, 0)), X1); e1(bz, B.clone().add(new THREE.Vector3(0, -0.8, 0)), X1);
-    if (!sp2) {
+    if (S.type === 'tb') {
       const ay = add('Ay', pyC, 1.1, COLS.left, A, 0.5), by = add('By', pyC, 1.1, COLS.left, B, 0.5);
       e1(ay, A.clone().add(new THREE.Vector3(0, 0, -0.8)), X1); e1(by, B.clone().add(new THREE.Vector3(0, 0, 0.8)), X1);
     }
-    lab(aH, sp2 ? 'sp²' : 'sp', A.clone().add(new THREE.Vector3(-0.2, -0.55, 0.6)));
+    lab(aH, hyName(S.type), A.clone().add(new THREE.Vector3(-0.2, -0.55, 0.6)));
     lab(az, 'p', A.clone().add(new THREE.Vector3(-0.45, 1.25, 0)));
   }
   if (canPi() && S.npi >= 1) {   // extra π bonds on a σ bond: parallel p orbitals side by side
@@ -5492,9 +5506,9 @@ function bondParts() { // [{id, name, role, fn, color}]
   if (k === 'sp') return withPi([sig(add(wfS(xa), wfP(xb, 0, -1)), 'σ bond <small>1s + p</small>', 'the 1s merges with the p lobe that points at it; the far p lobe (opposite phase) stays behind')]);
   if (k === 'pp') return withPi([sig(add(wfP(xa, 0, 1), wfP(xb, 0, -1)), 'σ bond <small>p + p</small>', 'the facing lobes merge into one fat lobe on the axis between the nuclei; the outer lobes stay')]);
   if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfPb(xa), wfPb(xb)), color: TB_P}];
-  const cs = k === 'db' ? Math.sqrt(1 / 3) : Math.sqrt(1 / 2);
-  const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${k === 'db' ? 'sp² + sp²' : 'sp + sp'}</small>`, 'the hybrids pointing at each other merge on the axis')];
-  out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge into two sausages, one above and one below the σ skeleton', fn: add(wfPi(xa, 1, 1), wfPi(xb, 1, 1)), color: PI});
+  const cs = hyTow(k)[0];
+  const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${hyName(k)} + ${hyName(k)}</small>`, 'the hybrids pointing at each other merge on the axis')];
+  if (k !== 'sb') out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge into two sausages, one above and one below the σ skeleton', fn: add(wfPi(xa, 1, 1), wfPi(xb, 1, 1)), color: PI});
   if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, makes two more sausages in front of and behind the axis', fn: add(wfPi(xa, 2, 1), wfPi(xb, 2, 1)), color: '#FFB86C'});
   return out;
 }
@@ -5514,9 +5528,9 @@ function bondSpec(d) {
   else if (k === 'pp') { it('σ', pFace, 1.45, A, one(TB_P)); it('σ', pFaceB, 1.45, B, one(TB_P)); }
   else if (k === 'pi') { it('π', pzC, 1.3, A, one(TB_P)); it('π', pzC, 1.3, B, one(TB_P)); }
   else {
-    const hy = (k === 'db' ? V.HYB.sp2 : V.HYB.sp)[0], flip = c => c.map((x, i) => (i === 1 ? -x : x));
+    const hy = hyTow(k), flip = c => c.map((x, i) => (i === 1 ? -x : x));
     it('σ', hy, 1.3, A, phaseCols(COLS.hyb)); it('σ', flip(hy), 1.3, B, phaseCols(COLS.hyb));
-    it('π', pzC, 1.1, A, phaseCols(COLS.left)); it('π', pzC, 1.1, B, phaseCols(COLS.left));
+    if (k !== 'sb') { it('π', pzC, 1.1, A, phaseCols(COLS.left)); it('π', pzC, 1.1, B, phaseCols(COLS.left)); }
     if (k === 'tb') { it('π2', pyC, 1.1, A, phaseCols(COLS.left)); it('π2', pyC, 1.1, B, phaseCols(COLS.left)); }
   }
   if (canPi() && S.npi >= 1) { it('π', pzC, 1.2, A, one(TB_P)); it('π', pzC, 1.2, B, one(TB_P)); }
@@ -5611,7 +5625,7 @@ function buildBond() {
     if (part.id === 'π2') { label('π', new THREE.Vector3(0, 0.15, pr[0]), 'bsig pi'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0, pr[1]))); model.add(dot(new THREE.Vector3(0.12, 0, pr[1]))); } }
   }
   if (S.lbl) {
-    const nm = {ss: ['1s', '1s'], sp: ['1s', 'p'], pp: ['p', 'p'], pi: ['p', 'p'], db: ['C', 'C'], tb: ['C', 'C']}[S.type];
+    const nm = {ss: ['1s', '1s'], sp: ['1s', 'p'], pp: ['p', 'p'], pi: ['p', 'p'], sb: ['C', 'C'], db: ['C', 'C'], tb: ['C', 'C']}[S.type];
     label(nm[0], A.clone().add(new THREE.Vector3(0, -0.45, 0)), 'blab dim'); label(nm[1], B.clone().add(new THREE.Vector3(0, -0.45, 0)), 'blab dim');
   }
 }
@@ -5810,14 +5824,19 @@ function bind() {
   $('#bMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; S.solo = null; save(); render(true); });
   $('#bSet').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.set = b.dataset.k; S.ai = 0; S.solo = null; save(); render(true); });
   $('#bAtom').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; S.ai = +b.dataset.i; S.solo = null; save(); render(false); });
-  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; const k = b.dataset.k; if (k === 'db' || k === 'tb') setSig(S.sig || 'hyb', k === 'db' ? 1 : 2); else { S.type = k; S.npi = 0; } S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
+  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; demo = false; const k = b.dataset.k; if (k === 'db' || k === 'tb') setSig(S.sig || 'hyb', k === 'db' ? 1 : 2); else { S.type = k; S.npi = 0; } S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
   // σ + π / σ + 2π: the σ part can come from s–s, s–p, p–p or the sp²/sp hybrids (the original double/triple bond)
   const setSig = (sg, n) => { S.sig = sg; if (sg === 'hyb') { S.type = n === 1 ? 'db' : 'tb'; S.npi = 0; } else { S.type = sg; S.npi = n; } };
   $('#bSig').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; const n = curN(); if (!n) return; setSig(b.dataset.s, n); S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
-  $('#bDist').addEventListener('input', e => { dragging = true; dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
+  $('#bDist').addEventListener('input', e => { demo = false; dragging = true; dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
   $('#bDist').addEventListener('change', () => { dragging = false; dirty = true; save(); });
   $('#bDist').addEventListener('pointerup', () => { dragging = false; dirty = true; });
-  $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.ovView = b.dataset.v; S.solo = null; save(); render(false); });
+  $('#bDemo').addEventListener('click', e => {
+    const b = e.target.closest('button[data-k]'); if (!b) return;
+    S.type = b.dataset.k; S.npi = 0; S.sig = 'hyb'; S.solo = null; S.ovView = 'sep';
+    dCur = 4.4; dGoal = TT().r0; S.d = dGoal; demo = true; demoAt = 0; demoT0 = performance.now(); save(); render(true);
+  });
+  $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; demo = false; S.ovView = b.dataset.v; S.solo = null; save(); render(false); });
   $('#bPlay').addEventListener('click', () => { dCur = 4.4; dGoal = TT().r0; S.d = dGoal; $('#bDist').value = String(dGoal); dirty = true; save(); });
   for (const [id, k] of [['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); dirty = true; });
   $('#bSpread').addEventListener('change', e => { S.spread = e.target.checked; save(); camGoal = wantDist(); dirty = true; });
