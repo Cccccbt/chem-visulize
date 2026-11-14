@@ -1327,6 +1327,10 @@ body.side-off .app > .panel{display:none}
 
     <section aria-label="Display" class="ctl">
       <h2 class="sec-h" style="margin-bottom:0">Display</h2>
+      <div class="seg" role="radiogroup" aria-label="Shapes" id="bShape">
+        <button type="button" role="radio" data-v="tb" title="Teardrop lobes as drawn in textbooks">Textbook shapes</button>
+        <button type="button" role="radio" data-v="cmp" title="Computed from hydrogen-like wavefunctions: the surface enclosing 90 % of the electron">Computed</button>
+      </div>
       <div class="seg" role="radiogroup" aria-label="Colour" id="bCol">
         <button type="button" role="radio" data-c="phase" title="+ lobes pink, − lobes blue, as in most textbooks">Colour by phase (+/−)</button>
         <button type="button" role="radio" data-c="type" title="s pink, p blue, d green, hybrids violet; − lobe darker">Colour by orbital type</button>
@@ -1340,7 +1344,7 @@ body.side-off .app > .panel{display:none}
     </section>
 
     <p class="note"><b>How it works.</b> In valence bond theory, each bond is a pair of electrons shared in the overlap of one orbital from each atom. More overlap gives a stronger bond. To make its bonds point the right way, an atom can <b>hybridize</b>: it mixes its s and p (and d) orbitals into equivalent hybrids. That needs, when there aren't enough unpaired electrons, <b>promoting</b> an electron to a higher orbital first. Head-on overlap along the bond axis gives a <b>σ bond</b>. Side-on overlap of parallel p orbitals gives a <b>π bond</b>, which sits above and below the axis. A double bond is σ + π, and a triple bond is σ + 2π.</p>
-    <p class="note"><b>Shapes shown</b> follow the angular part of each orbital, sharpened so the lobes are easy to tell apart. Pink and blue (or light and dark) are the two phases of ψ: the sign of the wavefunction, not charge. The bond view draws one surface of constant |ψ<sub>A</sub> + ψ<sub>B</sub>| (in-phase overlap). The energy curve is a schematic Morse curve, not data for a particular molecule. Hybrids with d orbitals (sp³d, sp³d²) are the textbook model; modern calculations show d orbitals contribute little to these bonds.</p>
+    <p class="note"><b>Shapes.</b> <b>Textbook</b> draws each lobe as a teardrop, as in textbook figures. <b>Computed</b> uses the same hybrid and atomic coefficients with hydrogen-like radial functions (Clementi effective nuclear charges; n = 3 functions stand in for Br and Xe) and draws the surface enclosing 90 % of the electron; bonding orbitals are φ<sub>A</sub> + φ<sub>B</sub> at real bond lengths (H₂, HF, F₂, C–C 1.54 Å, C=C 1.34 Å, C≡C 1.20 Å; X–H, X–F). Pink and blue are the two phases of ψ (the sign, not charge). The energy curve is schematic.</p>
   </aside>
 </div>
 
@@ -5098,7 +5102,7 @@ window.VBCore = (function () {
 const V = window.VBCore;
 const $ = s => document.querySelector(s);
 const KEY = 'aov.vbt';
-const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, col: 'phase', spread: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'sep', lobe: 1, pow: 4, npi: 0, sig: 'hyb'};
+const S = {mode: 'hyb', set: 'sp3', ai: 0, step: 1, type: 'pi', d: 3.2, phase: true, col: 'phase', spread: true, el: true, lbl: true, spin: false, solo: null, others: 'faint', ovView: 'sep', lobe: 1, pow: 4, shape: 'tb', npi: 0, sig: 'hyb'};
 const TYPES = {
   ss: {name: 's–s', bond: 'σ', r0: 0.6, D: 1.0, desc: 'Two s orbitals are spheres, so they can only overlap along the line between the nuclei.'},
   sp: {name: 's–p', bond: 'σ', r0: 1.5, D: 1.1, desc: 'The s orbital overlaps head-on with one lobe of the p orbital, along the bond axis.'},
@@ -5177,10 +5181,121 @@ const phaseCols = color => S.col === 'phase' ? [new THREE.Color(PH_POS), new THR
 // s-rich orbitals are drawn smaller than p, d or hybrid ones
 // s-rich orbitals are drawn smaller; only directional (p-like) character gets longer with the length slider
 const Lof = (c, big) => { const pc = Math.min(1, (1 - c[0] * c[0]) * 4); return (big || 1.85) * (0.291 + 0.709 * pc) * (1 + (S.lobe - 1) * pc); };   // pure s: radius = a p lobe's (0.291 × length); grows smoothly into a hybrid
+/* ---------- computed shapes (Display → Shapes: Computed) ----------
+   ψ = Σ cᵢ R_{n,lᵢ}(r) Yᵢ(û): the same hybrid / atomic coefficients as the textbook view, but with the
+   hydrogen-like radial functions R_{n,l} (Clementi–Raimondi effective nuclear charges; n = 3 functions stand in
+   for Br and Xe, with Slater charges), drawn as the surface enclosing 90 % of |ψ|². Bonding orbitals are
+   φA + φB (or hybrid + partner) at real bond lengths. Scene scale k = scene units per bohr. */
+const ZE = {H: [1, 1], Be: [1.912, 1.912], B: [2.576, 2.421], C: [3.217, 3.136], N: [3.847, 3.834], O: [4.492, 4.453], F: [5.128, 5.100],
+  P: [5.642, 4.886], S: [6.367, 5.482], Cl: [7.068, 6.116], Br: [7.6, 7.6], Xe: [8.25, 8.25]};
+const XH = {Be: 1.33, B: 1.19, C: 1.09, N: 1.01, O: 0.96};          // X–H bond lengths, Å
+const XF = {P: 1.58, S: 1.56, Cl: 1.70, Br: 1.81, Xe: 1.98};        // X–F (partner X drawn as an F 2p), Å
+const BOHR = 0.529177, L_OF = [0, 1, 1, 1, 2, 2], R4PI = Math.sqrt(4 * Math.PI);
+const spec = (el, n) => { const z = ZE[el] || ZE.C; return {el, n: Math.min(3, n), zs: z[0], zp: z[1]}; };
+const r90 = sp => (sp.n === 1 ? 2.66 / sp.zs : sp.n === 2 ? 8.0 / sp.zp : 13.5 / sp.zp);   // bohr, 90 % radius of the outer orbital
+function radial(n, l, Z, r) {   // hydrogen-like R_{n,l}(r), r in bohr; sign chosen so the outer region is +
+  const q = Z * r;
+  if (n === 1) return 2 * Z ** 1.5 * Math.exp(-q);
+  if (n === 2) return l === 0 ? (Z / 2) ** 1.5 * (q - 2) * Math.exp(-q / 2) : (Z / 2) ** 1.5 / Math.sqrt(3) * q * Math.exp(-q / 2);
+  if (l === 0) return 2 * (Z / 3) ** 1.5 * (1 - 2 * q / 3 + 2 * q * q / 27) * Math.exp(-q / 3);
+  if (l === 1) return (4 * Math.SQRT2 / 9) * (Z / 3) ** 1.5 * q * (q / 6 - 1) * Math.exp(-q / 3);
+  return (2 * Math.SQRT2 / (27 * Math.sqrt(5))) * (Z / 3) ** 1.5 * q * q * Math.exp(-q / 3);
+}
+let CTX = {k: 1, A: spec('C', 2), B: spec('C', 2), pi: spec('C', 2)};   // set at the start of each build
+const cmp = () => S.shape === 'cmp';
+// ψ of coefficient vector c on an atom (spec sp) at scene point P
+function psiFn(c, sp, P) {
+  const cs = [c[0], 0, 0, 0, 0, 0], cpv = [0, c[1], c[2], c[3], 0, 0], cd = [0, 0, 0, 0, c[4] || 0, c[5] || 0], hasD = !!(c[4] || c[5]), k = CTX.k;
+  return (x, y, z) => {
+    const v = toC(x - P.x, y - P.y, z - P.z), rr = Math.hypot(v[0], v[1], v[2]);
+    if (rr < 1e-9) return c[0] * radial(sp.n, 0, sp.zs, 0) / R4PI;
+    const u = [v[0] / rr, v[1] / rr, v[2] / rr], r = rr / k;
+    let f = c[0] ? c[0] * radial(sp.n, 0, sp.zs, r) : 0;
+    if (c[1] || c[2] || c[3]) f += radial(sp.n, 1, sp.zp, r) * V.evalF(cpv, u);
+    if (hasD) f += radial(sp.n, 2, sp.zp, r) * V.evalF(cd, u);
+    return f / R4PI;
+  };
+}
+// grid → 90 % boundary surface (both phases): [{pos, idx, sg, w?}]
+function iso90(fn, box, N) {
+  const [x0, x1, y0, y1, z0, z1] = box, st = Math.max(x1 - x0, y1 - y0, z1 - z0) / N;
+  const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil((y1 - y0) / st) + 1, nz = Math.ceil((z1 - z0) / st) + 1;
+  const Vv = new Float32Array(nx * ny * nz); let k = 0, mx = 0;
+  for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) { const f = fn(x0 + xi * st, y0 + yi * st, z0 + zi * st); Vv[k] = f; const a = Math.abs(f); if (a > mx) mx = a; }
+  const NB = 400, lo = Math.log(mx) - 12, hist = new Float64Array(NB); let tot = 0;
+  for (let i = 0; i < Vv.length; i++) { const a = Math.abs(Vv[i]); if (!(a > 0)) continue; const w = a * a; tot += w; hist[Math.min(NB - 1, Math.max(0, Math.floor((Math.log(a) - lo) / 12 * NB)))] += w; }
+  let acc = 0, t = mx * 0.05;
+  for (let b = NB - 1; b >= 0; b--) { acc += hist[b]; if (acc >= 0.9 * tot) { t = Math.exp(lo + b / NB * 12); break; } }
+  const out = [];
+  for (const sg of [1, -1]) {
+    const F = new Float32Array(Vv.length); for (let i = 0; i < Vv.length; i++) F[i] = sg * Vv[i] - t;
+    const {pos, idx} = surfaceNets(F, nx, ny, nz, [x0, y0, z0], st);
+    if (idx.length) out.push({pos, idx, sg});
+  }
+  return out;
+}
+function meshOf(part, cols, opacity, vcol) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(part.pos, 3)); g.setIndex(part.idx);
+  if (vcol) g.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3));
+  g.computeVertexNormals();
+  const mat = new THREE.MeshPhongMaterial({transparent: true, opacity, depthWrite: false, side: THREE.FrontSide, shininess: 50, specular: 0x30343c});
+  if (vcol) mat.vertexColors = true; else mat.color = new THREE.Color(cols[part.sg > 0 ? 0 : 1]);
+  return new THREE.Mesh(g, mat);
+}
+const compCache = new Map();
+// which atom an orbital belongs to in the current scene (see CTX)
+function specFor(c, at) {
+  if (S.mode === 'hyb') return CTX.A;
+  if (!c[0] && !c[1] && (c[2] || c[3])) return CTX.pi;
+  return at && at.x > 0 ? CTX.B : CTX.A;
+}
+// σ page, p–p end-on: the textbook view draws the facing p lobe big; the computed one uses a plain p
+const realC = c => (S.mode === 'ov' && S.type === 'pp' && c[0] && !c[2] && !c[3] ? [0, Math.sign(c[1]), 0, 0, 0, 0] : c);
+function compOrbital(c, color, opts) {
+  const sp = opts.atom || specFor(c, opts.at), cc = realC(c), key = cc.map(x => x.toFixed(4)).join(',') + '|' + sp.el + sp.n + '|' + CTX.k.toFixed(4);
+  let parts = compCache.get(key);
+  if (!parts) {
+    const e = 1.25 * r90(sp) * CTX.k;
+    parts = iso90(psiFn(cc, sp, new THREE.Vector3()), [-e, e, -e, e, -e, e], 64);
+    if (compCache.size > 80) compCache.clear();
+    compCache.set(key, parts);
+  }
+  const cols = opts.cols || phaseCols(color), grp = new THREE.Group();
+  for (const part of parts) grp.add(meshOf(part, cols, opts.opacity || 0.62));
+  if (opts.at) grp.position.copy(opts.at);
+  if (opts.rot) grp.quaternion.copy(opts.rot);
+  return grp;
+}
+// a computed bonding orbital: ψ = Σ of the items' orbitals, coloured by whichever orbital dominates
+function compBond(items, opacity) {
+  const fns = items.map(o => psiFn(realC(o.c), o.sp || specFor(o.c, o.at), o.at));
+  const lo = new THREE.Vector3(Infinity, Infinity, Infinity), hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  items.forEach(o => { const e = 1.15 * r90(o.sp || specFor(o.c, o.at)) * CTX.k; lo.min(o.at.clone().subScalar(e)); hi.max(o.at.clone().addScalar(e)); });
+  const parts = iso90((x, y, z) => { let v = 0; for (const f of fns) v += f(x, y, z); return v; }, [lo.x, hi.x, lo.y, hi.y, lo.z, hi.z], 76);
+  return parts.map(part => {
+    const col = new Float32Array(part.pos.length);
+    for (let j = 0; j < part.pos.length; j += 3) {
+      let ws = 0, r = 0, g = 0, b = 0;
+      items.forEach((o, i) => { const f = part.sg * fns[i](part.pos[j], part.pos[j + 1], part.pos[j + 2]); if (f <= 0) return; const w = f * f, cc = o.cols[part.sg > 0 ? 0 : 1]; r += w * cc.r; g += w * cc.g; b += w * cc.b; ws += w; });
+      const cc = items[0].cols[part.sg > 0 ? 0 : 1];
+      if (ws > 0) { col[j] = r / ws; col[j + 1] = g / ws; col[j + 2] = b / ws; } else { col[j] = cc.r; col[j + 1] = cc.g; col[j + 2] = cc.b; }
+    }
+    return meshOf(part, null, opacity, col);
+  });
+}
+// scene context for the computed view: which atoms, and the scale (scene units per bohr)
+function setCtx() {
+  if (S.mode === 'hyb') { const [sym, , n] = atom(), A = spec(sym, n); CTX = {k: 1.85 / r90(A), A, B: A, pi: A}; return; }
+  const C = spec('C', 2), H = spec('H', 1), F = spec('F', 2);
+  const real = {ss: [H, H, 0.741], sp: [H, F, 0.917], pp: [F, F, 1.412], pi: [C, C, 1.34], sb: [C, C, 1.54], db: [C, C, 1.34], tb: [C, C, 1.20]}[S.type];
+  CTX = {k: TYPES[S.type].r0 / (real[2] / BOHR), A: real[0], B: real[1], pi: C};
+}
 // textbook teardrop: each lobe comes to a point at the nucleus and is round at the far end
 // (cut the sharpened amplitude at TC, so the lobe leaves the nucleus as a cone, then fatten the far end with TQ < 1)
 const TC = 0.3, TQ = 0.6, TEAR = t => (t <= TC ? 0 : Math.pow((t - TC) / (1 - TC), TQ));
 function orbital(c, L, color, opts = {}) {
+  if (cmp()) return compOrbital(c, color, opts);
   const base = UNIT.attributes.position, n = base.count;
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), fs = new Float32Array(n);
   // each lobe keeps a slim shape (POW) but its length follows the real amplitude of that phase (QW):
@@ -5242,6 +5357,7 @@ const BNAME = n => ['s', 'p<sub>x</sub>', 'p<sub>y</sub>', 'p<sub>z</sub>', 'd<s
 function build() {
   dispose(model); model = new THREE.Group(); scene.add(model);
   $('#bLabels').innerHTML = ''; labs = [];
+  setCtx();
   if (S.mode === 'hyb') buildHyb(); else if (S.ovView === 'bond') buildBond(); else buildOv();
 }
 
@@ -5309,7 +5425,11 @@ function buildHyb() {
       // the resulting σ bonding orbital, drawn as in textbook figures: the hybrid's teardrop grown longer toward the
       // partner (pointed at the central nucleus, round at the far end); the partner atom itself is not drawn
       const Lb = len * (1 + 0.38 * bondB);
-      model.add(orbital(c, Lb, COLS.hyb, {opacity: a === 1 ? 0.66 : a}));
+      if (cmp()) {   // computed: hybrid + partner orbital (H 1s, or an F 2p for X) at the real bond length
+        const H = partner === 'H', R = (H ? XH[sym] || 1.09 : XF[sym] || 1.6) / BOHR * CTX.k, at = u.clone().multiplyScalar(R * bondB + (1 - bondB) * 8);
+        const pc = H ? [1, 0, 0, 0, 0, 0] : [0, -dir[0], -dir[1], -dir[2], 0, 0];
+        for (const mesh of compBond([{c, at: new THREE.Vector3(), sp: CTX.A, cols: phaseCols(COLS.hyb)}, {c: pc, at, sp: H ? spec('H', 1) : spec('F', 2), cols: phaseCols(H ? COLS.lig : COLS.ligp)}], a === 1 ? 0.66 : a)) model.add(mesh);
+      } else model.add(orbital(c, Lb, COLS.hyb, {opacity: a === 1 ? 0.66 : a}));
       if (a !== 1) return;
       electrons(model, u.clone().multiplyScalar(Lb * 0.72), u, 2);
       if (bondB > 0.97) label('σ', u.clone().multiplyScalar(Lb * 0.72 + 0.35), 'bsig');
@@ -5629,7 +5749,7 @@ function buildBond() {
     const a = vis(part.id);
     if (!a) continue;
     const items = spec.filter(o => o.g === part.id);
-    for (const m of bondMeshes(items, box, st, a === 1 ? 0.6 : a)) model.add(m);
+    for (const m of (cmp() ? compBond(items, a === 1 ? 0.6 : a) : bondMeshes(items, box, st, a === 1 ? 0.6 : a))) model.add(m);
     if (a !== 1 || !near) continue;
     if (part.id === 'σ') { label('σ', new THREE.Vector3(0, 0.02, 0.5), 'bsig'); if (S.el) { model.add(dot(new THREE.Vector3(-0.12, 0.05, 0.38))); model.add(dot(new THREE.Vector3(0.12, 0.05, 0.38))); } }
     const pi1 = spec.find(o => o.g !== 'σ' && o.cy), pr = pi1 ? [pi1.cy + pi1.ry + 0.35, pi1.cy] : [1.45, 0.62];   // π electrons sit in the band
@@ -5803,6 +5923,7 @@ function render(reset) {
   $('#bHyb').hidden = !hyb; $('#bOv').hidden = hyb;
   for (const [id, k] of [['#bSpread', 'spread'], ['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).checked = S[k];
   document.querySelectorAll('#bCol button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.c === S.col)));
+  document.querySelectorAll('#bShape button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === (S.shape || 'tb'))));
   $('#bSpreadW').hidden = S.mode !== 'hyb';
   const bv = S.mode === 'ov' && S.ovView === 'bond';
   $('#bLegBd').hidden = !bv; $('#bLegPh').hidden = bv || S.col !== 'phase'; $('#bLegTy').hidden = bv || S.col === 'phase';
@@ -5824,7 +5945,8 @@ const wantDist = () => {
     const hw = (cols - 1) * SP / 2 + 2.1, hh = (rows - 1) * SP / 2 + 2.3;
     return Math.max(hw / asp, hh) / Math.tan(17 * Math.PI / 180) * 1.05;
   }
-  return (S.mode === 'hyb' ? (S.step === 4 ? 15 : 10.5) : 11.5) / Math.min(1, asp * 0.95);
+  // computed shapes are true to scale and bigger than the textbook lobes: step back
+  return (S.mode === 'hyb' ? (S.step === 4 ? 15 : 10.5) : 11.5) * (cmp() ? (S.mode === 'hyb' ? 1.25 : 1.45) : 1) / Math.min(1, asp * 0.95);
 };
 function fit() {
   const d = wantDist(); camGoal = null;
@@ -5849,6 +5971,7 @@ function bind() {
   for (const [id, k] of [['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); dirty = true; });
   $('#bSpread').addEventListener('change', e => { S.spread = e.target.checked; save(); camGoal = wantDist(); dirty = true; });
   $('#bCol').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.col = b.dataset.c; save(); render(false); });
+  $('#bShape').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b) return; S.shape = b.dataset.v; save(); render(true); });
   $('#bReset').addEventListener('click', fit);
   $('#bOrbs').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (!b) return; S.solo = S.solo === b.dataset.id ? null : b.dataset.id; save(); renderOrbs(); dirty = true; });
   $('#bAll').addEventListener('click', () => { S.solo = null; save(); renderOrbs(); dirty = true; });
