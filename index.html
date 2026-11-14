@@ -5542,7 +5542,7 @@ function bondSpec(d) {
   // side-on p lobes don't reach each other, so for a π bond each lobe is drawn out along the axis toward its
   // partner: the + lobes join into one band above, the − lobes into one below (fully once at the bond length)
   const w = Math.max(0, Math.min(1, (TT().r0 + 1.2 - d) / 1.2));
-  for (const o of out) if (o.g !== 'σ') { o.ext = (d / 2) * w; o.dir = o.at.x < 0 ? 1 : -1; }
+  for (const o of out) if (o.g !== 'σ') { o.ext = (d / 2) * w; o.dir = o.at.x < 0 ? 1 : -1; o.bend = 0.4 * w; o.half = d / 2; o.ax = o.g === 'π' ? 1 : 2; }
   return out;
 }
 const lobeCache = new Map();
@@ -5556,6 +5556,10 @@ function lobeInfo(c) {   // the same per-lobe numbers orbital() uses: lobe axes 
 }
 // (R(û)/r)⁴ for one lobe (sign sg) of an item: ≥ 1 inside the Overlap-view surface, falling off quickly outside
 function blob(item, info, sg, x, y, z) {
+  if (item.bend) {   // π: bow the band into an arc — raised between the nuclei, inner edge more than outer, so it thins there
+    const h = item.bend * Math.max(0, 1 - (x / item.half) ** 2);
+    if (h > 0) { const a = item.ax === 1 ? y : z, m = Math.abs(a), k = h * (1 - 0.5 * Math.min(1, Math.max(0, (m - 0.4) / 1.2))), na = Math.sign(a) * Math.max(0, m - k); if (item.ax === 1) y = na; else z = na; }
+  }
   let vx = x - item.at.x; const vy = y - item.at.y, vz = z - item.at.z;
   if (item.ext) { const t = vx * item.dir; if (t > 0) vx = Math.max(0, t - item.ext) * item.dir; }   // π: extruded toward the partner
   const r = Math.hypot(vx, vy, vz);
