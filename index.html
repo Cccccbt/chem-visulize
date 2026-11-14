@@ -5275,8 +5275,8 @@ function buildHyb() {
       if (S.lbl && (bondB < 0.01 || cfg.hyb[i] === 2 || S.solo === id)) label(info.name + (cfg.hyb[i] === 2 ? ' <small>lone pair</small>' : ''), u.clone().multiplyScalar(L + 0.32).add(o));
     }
   });
-  // p orbitals that stay out of the mix
-  left.forEach((k, j) => {
+  // p orbitals that stay out of the mix (after bonding, step 4, only the hybrid orbitals are shown)
+  if (!(bondB > 0.01 && t > 0.98)) left.forEach((k, j) => {
     const id = 'l' + j, a = vis(id), o = offsetOf(uses.length + j, m);
     if (spreadT >= 0.01) model.add(nucleus(o, 0.12));
     if (!a) return;
@@ -5649,7 +5649,7 @@ function hybOrbs() {
     V.LEFT[set].forEach((k, j) => out.push({id: 'l' + j, name: names[k], kind: 'atomic', k, e: atomicE(cfg, k)}));
   } else {
     V.USES[set].forEach((k, i) => out.push({id: 'u' + i, name: S.step === 4 && cfg.hyb[i] === 1 ? `σ bond<small>${i + 1}</small>` : `${info.name}<small>${i + 1}</small>`, kind: 'hyb', i, e: S.step === 4 && cfg.hyb[i] === 1 ? 2 : cfg.hyb[i]}));
-    V.LEFT[set].forEach((k, j) => out.push({id: 'l' + j, name: names[k], kind: 'left', k, e: cfg.left[j]}));
+    if (S.step !== 4) V.LEFT[set].forEach((k, j) => out.push({id: 'l' + j, name: names[k], kind: 'left', k, e: cfg.left[j]}));
   }
   return {out, set, info, n, partner};
 }
