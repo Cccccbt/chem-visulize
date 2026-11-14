@@ -5400,23 +5400,12 @@ const wfH = (cx, cs, sgn) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; re
 // π lobes for double/triple bonds, textbook style: a sausage held off the bond axis (≈0.5–1.45 out) and drawn out along it, so the two
 // perpendicular π bonds of a triple bond stay four separate lobes around a thin σ core instead of merging into a ring
 const wfPi = (cx, axis, sgn) => { const s = S.lobe; return (x, y, z) => { const v = [(x - cx) / 1.45, y, z]; v[axis] /= s; const r = Math.hypot(v[0], v[1], v[2]) + 1e-9, a = v[axis]; return sgn * 2.5 * a * a * a / r * Math.exp(-r / 0.45); }; };
-// a hybrid pointing along any unit vector u from P (for the C–H bonds), and an H 1s at P
-const wfHu = (P, u, cs) => { const cp = Math.sqrt(1 - cs * cs), s = S.lobe; return (x, y, z) => { const X = x - P.x, Y = y - P.y, Z = z - P.z, al = X * u.x + Y * u.y + Z * u.z, pr = Math.hypot(X - al * u.x, Y - al * u.y, Z - al * u.z), da = al / s, r = Math.hypot(da, pr); return 1.25 * Math.exp(-r / AH) * (cs * r + cp * 1.732 * da); }; };
-const wfSH = P => (x, y, z) => 0.5 * Math.exp(-Math.hypot(x - P.x, y - P.y, z - P.z) / 0.42);
-const CH = 1.55;   // C–H distance used for the outer atoms
 // the outer hybrids of each carbon (the ones not pointing at the other carbon): [{P, u}] in screen coordinates
 // the nodal plane of a π bond: the plane containing the bond axis, where the π density is zero
 function nodalPlane(d) {
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(d + 4.2, 3.2), new THREE.MeshBasicMaterial({color: 0xBDF5E3, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide}));
   pl.rotation.x = -Math.PI / 2; model.add(pl);
   if (S.lbl) label('nodal plane', new THREE.Vector3(-d / 2 - 1.9, 0.12, 1.4), 'blab dim');
-}
-function outerHybrids(k, d) {
-  const hy = k === 'db' ? V.HYB.sp2 : V.HYB.sp, flip = c => c.map((x, i) => (i === 1 ? -x : x)), out = [];
-  hy.forEach((c, i) => { if (i === 0) return;
-    out.push({P: new THREE.Vector3(-d / 2, 0, 0), u: toT(V.lobeDir(c).dir).normalize()});
-    out.push({P: new THREE.Vector3(d / 2, 0, 0), u: toT(V.lobeDir(flip(c)).dir).normalize()}); });
-  return out;
 }
 const TB_S = '#F4A6C6', TB_P = '#8CCFEA';   // textbook overlap pictures: s pink, p light blue
 // side-on π: p lobes drawn out a little along the bond so the two merge into one curved band above and one below
@@ -5486,9 +5475,6 @@ function bondParts() { // [{id, name, role, fn, color}]
   if (k === 'pi') return [{id: 'π', name: 'π bond <small>p + p</small>', role: 'the + lobes merge into one tube above the axis and the − lobes into one below; nothing on the axis itself (a nodal plane)', fn: add(wfPb(xa), wfPb(xb)), color: TB_P}];
   const cs = k === 'db' ? Math.sqrt(1 / 3) : Math.sqrt(1 / 2);
   const out = [sig(add(wfH(xa, cs, 1), wfH(xb, cs, -1)), `σ bond <small>${k === 'db' ? 'sp² + sp²' : 'sp + sp'}</small>`, 'the hybrids pointing at each other merge on the axis')];
-  // C–H σ bonds: each outer hybrid + an H 1s, so the whole σ skeleton (H–C≡C–H, or the flat H₂C=CH₂) shows
-  const fs = outerHybrids(k, d).map(({P, u}) => add(wfHu(P, u, cs), wfSH(P.clone().addScaledVector(u, CH))));
-  out.push({id: 'σH', name: 'C–H σ bonds <small>' + (k === 'db' ? 'sp² + H 1s' : 'sp + H 1s') + '</small>', role: 'the other hybrids on each carbon overlap head-on with an H 1s: the rest of the σ skeleton', fn: (x, y, z) => fs.reduce((m, f) => Math.max(m, f(x, y, z)), -Infinity), color: SIG});
   out.push({id: 'π', name: 'π bond <small>p + p</small>', role: 'the parallel p orbitals merge into two sausages, one above and one below the σ skeleton', fn: add(wfPi(xa, 1, 1), wfPi(xb, 1, 1)), color: PI});
   if (k === 'tb') out.push({id: 'π2', name: '2nd π bond <small>p + p</small>', role: 'the second pair of p orbitals, at 90° to the first, makes two more sausages in front of and behind the axis', fn: add(wfPi(xa, 2, 1), wfPi(xb, 2, 1)), color: '#FFB86C'});
   return out;
@@ -5503,15 +5489,6 @@ function buildBond() {
   const moving = Math.abs(dCur - dGoal) > 1e-3 || dragging;
   const ext = 2.1 * Math.max(1, S.lobe), st = (moving ? 0.13 : 0.075) * Math.max(1, S.lobe * 0.9), box = [-d / 2 - ext - 0.3, d / 2 + ext + 0.3, -ext, ext, -ext, ext];
   const near = d < T.r0 + 0.35;
-  if (S.type === 'db' || S.type === 'tb') {
-    box[0] = -d / 2 - CH - 1.1; box[1] = d / 2 + CH + 1.1;
-    if (vis('σH')) for (const {P, u} of outerHybrids(S.type, d)) {
-      const H = P.clone().addScaledVector(u, CH), nu = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), new THREE.MeshBasicMaterial({color: 0x9AA3B2, depthTest: false}));
-      nu.position.copy(H); nu.renderOrder = 3; model.add(nu);
-      if (S.lbl) { label('H', H.clone().add(new THREE.Vector3(0, -0.4, 0)), 'blab dim'); label('C–H σ', P.clone().addScaledVector(u, CH * 0.55).add(new THREE.Vector3(0, 0.55, 0)), 'blab'); }
-    }
-  }
-  if (S.type === 'pi' && vis('π')) nodalPlane(d);
   for (const part of bondParts()) {
     const a = vis(part.id);
     if (!a) continue;
