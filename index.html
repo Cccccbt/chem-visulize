@@ -1286,14 +1286,14 @@ body.side-off .app > .panel{display:none}
     </div>
 
     <div id="bOv" class="bcol" hidden>
-      <section aria-label="Bond formation demo">
-        <h2 class="sec-h">Bond formation demo</h2>
+      <section aria-label="C–C bonds">
+        <h2 class="sec-h">C–C bonds</h2>
         <div class="seg" role="group" aria-label="Play a bond forming" id="bDemo" style="grid-template-columns:repeat(3,1fr)">
           <button type="button" data-k="sb" title="Ethane: sp³–sp³, one σ bond">Single<br><small>C–C</small></button>
           <button type="button" data-k="db" title="Ethene: sp²–sp², σ + π">Double<br><small>C=C</small></button>
           <button type="button" data-k="tb" title="Ethyne: sp–sp, σ + 2π">Triple<br><small>C≡C</small></button>
         </div>
-        <p class="bmut" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Two carbon atoms come together: the orbitals overlap, then the view switches to the bonding orbitals that form.</p>
+        <p class="bmut" style="margin:8px 0 0;font-size:12px;color:var(--muted)">Two carbon atoms at the bond length. Switch between Overlap and Bonding orbital below.</p>
       </section>
       <section aria-label="Overlap">
         <h2 class="sec-h">Overlap</h2>
@@ -5098,7 +5098,6 @@ const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', 
 
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [];
 let camGoal = null, dragging = false, spreadT = 0;
-let demo = false, demoAt = 0, demoT0 = 0;   // bond formation demo: approach in the Overlap view, then switch to Bonding orbital
 let mixT = 0, mixGoal = 0, bondB = 0, bondGoal = 0, dCur = 3.2, dGoal = 3.2, dirty = true, last = 0;
 const HOME = new THREE.Vector3(0.75, 0.55, 1).normalize();
 const Y = new THREE.Vector3(0, 1, 0);
@@ -5136,12 +5135,10 @@ function initScene() {
     const ease = (a, b, k) => { const n = a + (b - a) * Math.min(1, dt * k); return Math.abs(b - n) < 0.006 ? b : n; };
     const m0 = mixT, b0 = bondB, d0 = dCur;
     const s0 = spreadT;
-    mixT = ease(mixT, mixGoal, 4); bondB = ease(bondB, bondGoal, 4); if (demo && demoT0) { const f = Math.min(1, (now - demoT0) / 2600), e = f * f * (3 - 2 * f); dCur = f >= 1 ? dGoal : 4.4 + (dGoal - 4.4) * e; }   // demo: a timed 2.6 s approach
-    else dCur = ease(dCur, dGoal, 3); spreadT = ease(spreadT, spreadGoal(), 4);
+    mixT = ease(mixT, mixGoal, 4); bondB = ease(bondB, bondGoal, 4); dCur = ease(dCur, dGoal, 3); spreadT = ease(spreadT, spreadGoal(), 4);
     if (spreadT !== s0) dirty = true;
     if (mixT !== m0 || bondB !== b0 || dCur !== d0) dirty = true;
     if (d0 !== dCur && dCur === dGoal) dirty = true;
-    if (demo && S.mode === 'ov' && dCur === dGoal) { if (!demoAt) demoAt = now; else if (now - demoAt > 700) { demo = false; demoAt = 0; demoT0 = 0; S.ovView = 'bond'; save(); render(false); } }
     if (dirty) { dirty = false; build(); if (S.mode === 'ov') { drawChart(); renderOvRead(); } }
     if (camGoal != null) { // glide the camera in or out along its current direction
       const off = camera.position.clone().sub(controls.target), L = off.length(), nL = L + (camGoal - L) * Math.min(1, dt * 3);
@@ -5824,19 +5821,19 @@ function bind() {
   $('#bMode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.mode = b.dataset.m; S.solo = null; save(); render(true); });
   $('#bSet').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; S.set = b.dataset.k; S.ai = 0; S.solo = null; save(); render(true); });
   $('#bAtom').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; S.ai = +b.dataset.i; S.solo = null; save(); render(false); });
-  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; demo = false; const k = b.dataset.k; if (k === 'db' || k === 'tb') setSig(S.sig || 'hyb', k === 'db' ? 1 : 2); else { S.type = k; S.npi = 0; } S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
+  $('#bType').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; const k = b.dataset.k; if (k === 'db' || k === 'tb') setSig(S.sig || 'hyb', k === 'db' ? 1 : 2); else { S.type = k; S.npi = 0; } S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
   // σ + π / σ + 2π: the σ part can come from s–s, s–p, p–p or the sp²/sp hybrids (the original double/triple bond)
   const setSig = (sg, n) => { S.sig = sg; if (sg === 'hyb') { S.type = n === 1 ? 'db' : 'tb'; S.npi = 0; } else { S.type = sg; S.npi = n; } };
   $('#bSig').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; const n = curN(); if (!n) return; setSig(b.dataset.s, n); S.solo = null; dGoal = dCur = 4.4; S.d = dGoal; save(); render(true); });
-  $('#bDist').addEventListener('input', e => { demo = false; dragging = true; dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
+  $('#bDist').addEventListener('input', e => { dragging = true; dGoal = dCur = +e.target.value; S.d = dGoal; dirty = true; });
   $('#bDist').addEventListener('change', () => { dragging = false; dirty = true; save(); });
   $('#bDist').addEventListener('pointerup', () => { dragging = false; dirty = true; });
   $('#bDemo').addEventListener('click', e => {
     const b = e.target.closest('button[data-k]'); if (!b) return;
-    S.type = b.dataset.k; S.npi = 0; S.sig = 'hyb'; S.solo = null; S.ovView = 'sep';
-    dCur = 4.4; dGoal = TT().r0; S.d = dGoal; demo = true; demoAt = 0; demoT0 = performance.now(); save(); render(true);
+    S.type = b.dataset.k; S.npi = 0; S.sig = 'hyb'; S.solo = null;
+    dCur = dGoal = TT().r0; S.d = dGoal; save(); render(true);   // shown straight away at the bond length, no animation
   });
-  $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; demo = false; S.ovView = b.dataset.v; S.solo = null; save(); render(false); });
+  $('#bView').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.ovView = b.dataset.v; S.solo = null; save(); render(false); });
   $('#bPlay').addEventListener('click', () => { dCur = 4.4; dGoal = TT().r0; S.d = dGoal; $('#bDist').value = String(dGoal); dirty = true; save(); });
   for (const [id, k] of [['#bEl', 'el'], ['#bLbl', 'lbl'], ['#bSpin', 'spin']]) $(id).addEventListener('change', e => { S[k] = e.target.checked; save(); dirty = true; });
   $('#bSpread').addEventListener('change', e => { S.spread = e.target.checked; save(); camGoal = wantDist(); dirty = true; });

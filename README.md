@@ -13,7 +13,7 @@ page (`index.html` or `#home`) lists them all.
 | Atomic structure | Periodic Trends — the periodic table as a 3D bar chart | `#trends` |
 | Chemical bonding | Lewis Structure Viewer — Lewis structure from a formula, step by step, with formal charges, resonance and VSEPR shape | `#lewis` |
 | Chemical bonding | VSEPR Model — 3D electron-domain geometry with lone pairs and bond angles; optional polarity view (bond dipoles, net dipole, δ+/δ−) | `#vsepr` |
-| Chemical bonding | Valence Bond Theory — hybrid orbitals forming σ bonds, with orbital diagrams; σ and π overlap (overlap and bonding-orbital views) with an energy curve; single, double and triple C–C bond formation demo | `#vbt` |
+| Chemical bonding | Valence Bond Theory — hybrid orbitals forming σ bonds, with orbital diagrams; σ and π overlap (overlap and bonding-orbital views) with an energy curve; single, double and triple C–C bonds | `#vbt` |
 | Chemical bonding | Molecular Orbital Theory — MO diagrams for H₂–Ne₂ and ions with bond order and magnetism; 3D bonding/antibonding orbitals | `#mo` |
 | Thermochemistry | Bomb Calorimeter — animated cutaway with q = C·ΔT → ΔU → ΔH | `#calorimeter` |
 | Reference | Exam Appendix — General Chemistry II constants, equations and Kₐ tables | `#appendix` |
