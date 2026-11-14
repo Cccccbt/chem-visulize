@@ -1419,7 +1419,7 @@ body.side-off .app > .panel{display:none}
     </section>
 
     <p class="note"><b>How it works.</b> When two atoms approach, each pair of matching atomic orbitals combines in two ways. <b>In phase</b> (ψ<sub>A</sub> + ψ<sub>B</sub>) gives a lower-energy <b>bonding</b> orbital with density between the nuclei. <b>Out of phase</b> (ψ<sub>A</sub> − ψ<sub>B</sub>) gives a higher-energy <b>antibonding</b> orbital (*) with a node between them. Electrons fill the molecular orbitals from the bottom up, two per orbital, spreading over equal-energy orbitals before pairing (Hund's rule). <b>Bond order</b> = ½ (bonding − antibonding electrons); 0 means no stable molecule.</p>
-    <p class="note"><b>Shapes</b> are one constant-value surface of ψ<sub>A</sub> ± ψ<sub>B</sub> built from hydrogen-like orbitals: pink is +, blue is −. The energy levels are schematic, showing order, not exact values.</p>
+    <p class="note"><b>Shapes</b> are computed: ψ = φ<sub>A</sub> ± φ<sub>B</sub> from hydrogen-like 1s, 2s and 2p wavefunctions with Clementi effective nuclear charges, at the experimental bond length, drawn as the surface that encloses 90 % of the electron probability (in General mode, using the period-2 atom with that many valence electrons). Pink is +, blue is −. This is the simple LCAO picture: it leaves out 2s–2p mixing in the σ orbitals. The energy levels are schematic, showing order, not exact values.</p>
   </aside>
 </div>
 
@@ -5919,32 +5919,60 @@ function fill() {
 }
 const maxE = () => levels().mo.reduce((s, m) => s + 2 * m.deg, 0);   // every level full (4 for 1s, 16 for 2s + 2p)
 
-/* ---------- 3-D: isosurface of ψA ± ψB ---------- */
+/* ---------- 3-D: LCAO molecular orbitals from hydrogen-like atomic orbitals ----------
+   φ(1s) = (Z³/π)^½ e^(−Zr),  φ(2s) = (Z³/32π)^½ (Zr − 2) e^(−Zr/2),  φ(2p_x) = (Z⁵/32π)^½ x e^(−Zr/2)   (bohr)
+   with Clementi–Raimondi effective nuclear charges Z, the two atoms at the experimental bond length, and
+   ψ = φA ± φB. The surface drawn is the one that encloses 90 % of |ψ|² (the usual orbital boundary surface).
+   Everything is scaled so the bond is D scene units long, i.e. shapes are true to scale relative to the bond. */
 let inited = false, renderer, scene, camera, controls, viewer, model = null, labs = [], dirty = true;
 const Y = new THREE.Vector3(0, 1, 0);
-const D_FAR = 5.6, ISO = 0.085;
-// bond length: 1s orbitals are smaller and sit closer (H₂ 0.74 Å) than 2s/2p, so their in-phase sum merges
-const baseD = () => (levels().small ? 1.45 : 2.0);
-let D = 2.0, animT0 = 0;   // formation animation: the atoms move in from D_FAR to D0
-const wS = (cx, a) => (x, y, z) => 0.42 * Math.exp(-Math.hypot(x - cx, y, z) / a);
-const wP = (cx, axis, sgn) => (x, y, z) => { const v = [x - cx, y, z], r = Math.hypot(v[0], v[1], v[2]); return sgn * 1.732 * v[axis] * Math.exp(-r / 0.5); };
+const D_FAR = 5.6;
+const baseD = () => 2.0;
+let D = 2.0, animT0 = 0;   // formation animation: the atoms move in from D_FAR to the bond length
+// Clementi–Raimondi Z_eff [1s] or [2s, 2p]; experimental X₂ bond lengths in Å (He₂, Ne₂: weakly bound / ion values)
+const ZEFF = {H: [1.0], He: [1.6875], Li: [1.279, 1.279], Be: [1.912, 1.912], B: [2.576, 2.421], C: [3.217, 3.136], N: [3.847, 3.834], O: [4.492, 4.453], F: [5.128, 5.100], Ne: [5.758, 5.758]};
+const RX2 = {H: 0.741, He: 1.08, Li: 2.673, Be: 2.45, B: 1.59, C: 1.243, N: 1.098, O: 1.208, F: 1.412, Ne: 3.1};
+const PER1 = ['H', 'He'], PER2 = ['Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne'];
+// the atom whose numbers are used: the molecule's in Molecules mode; in General mode the period-2 (or 1s) atom
+// with that many valence electrons per atom
+function curAtom() {
+  if (S.mode === 'mol') return S.el;
+  const v = Math.max(1, Math.ceil(S.ne / 2));
+  return levels().small ? PER1[Math.min(2, v) - 1] : PER2[Math.min(8, v) - 1];
+}
+// rough radius of the drawn (90 %) surfaces in scene units, for laying things out
+function size90() { const el = curAtom(), z = ZEFF[el], k = baseD() / (RX2[el] / 0.529177); return levels().small ? k * 2.66 / z[0] : k * 8 / Math.min(z[0], z[1]); }
 function moFns(shape, small) {
-  const a = small ? 0.42 : 0.55, xa = -D / 2, xb = D / 2, sg = shape.endsWith('+') ? 1 : -1;
+  const el = curAtom(), z = ZEFF[el], Rb = RX2[el] / 0.529177, k = baseD() / Rb;   // k: scene units per bohr
+  const xa = -D / 2, xb = D / 2, sg = shape.endsWith('+') ? 1 : -1;
+  const s1 = (cx, Z) => { const n = Math.sqrt(Z * Z * Z / Math.PI); return (x, y, z2) => { const r = Math.hypot(x - cx, y, z2) / k; return n * Math.exp(-Z * r); }; };
+  const s2 = (cx, Z) => { const n = Math.sqrt(Z * Z * Z / (32 * Math.PI)); return (x, y, z2) => { const r = Math.hypot(x - cx, y, z2) / k; return n * (Z * r - 2) * Math.exp(-Z * r / 2); }; };   // sign chosen so the outer (main) region is +
+  const p2 = (cx, ax, sgn, Z) => { const n = Math.sqrt(Z ** 5 / (32 * Math.PI)); return (x, y, z2) => { const v = [(x - cx) / k, y / k, z2 / k], r = Math.hypot(v[0], v[1], v[2]); return sgn * n * v[ax] * Math.exp(-Z * r / 2); }; };
   let A, B;
-  if (shape.startsWith('ss')) { A = wS(xa, a); B = wS(xb, a); }
-  else if (shape.startsWith('pp')) { A = wP(xa, 0, 1); B = wP(xb, 0, -1); }   // + lobes facing each other
-  else { A = wP(xa, 1, 1); B = wP(xb, 1, 1); }                             // parallel p (π)
-  return {A, B, M: (x, y, z) => A(x, y, z) + sg * B(x, y, z), sg};
+  if (shape.startsWith('ss')) { if (small) { A = s1(xa, z[0]); B = s1(xb, z[0]); } else { A = s2(xa, z[0]); B = s2(xb, z[0]); } }
+  else if (shape.startsWith('pp')) { A = p2(xa, 0, 1, z[1]); B = p2(xb, 0, -1, z[1]); }   // + lobes facing each other
+  else { A = p2(xa, 1, 1, z[1]); B = p2(xb, 1, 1, z[1]); }                                // parallel p (π)
+  // how far the orbitals reach (bohr → scene), for the sampling box
+  const reach = k * (small ? 3.6 / z[0] : 9.5 / Math.min(z[0], z[1]));
+  return {A, B, M: (x, y, z2) => A(x, y, z2) + sg * B(x, y, z2), sg, reach, el};
 }
 const PH_POS = 0xF08AA6, PH_NEG = 0x5FA4E6;
-function iso(fn, op) {
-  const st = animT0 ? 0.11 : 0.075, x0 = -D / 2 - 2.5, x1 = D / 2 + 2.5, e = 2.2;
+// 90 % boundary surface: the value t with Σ|ψ|² over |ψ| ≥ t = 0.9 Σ|ψ|² (found with a log histogram)
+function iso(fn, op, reach) {
+  const e = Math.max(1.2, reach), n = animT0 ? 64 : 92, st = (D + 2 * e) / n, x0 = -D / 2 - e, x1 = D / 2 + e;
   const nx = Math.ceil((x1 - x0) / st) + 1, ny = Math.ceil(2 * e / st) + 1, nz = ny;
-  const P = new Float32Array(nx * ny * nz), N = new Float32Array(nx * ny * nz);
-  let k = 0;
+  const V = new Float32Array(nx * ny * nz);
+  let k = 0, mx = 0;
   for (let zi = 0; zi < nz; zi++) for (let yi = 0; yi < ny; yi++) for (let xi = 0; xi < nx; xi++, k++) {
-    const f = fn(x0 + xi * st, -e + yi * st, -e + zi * st); P[k] = f - ISO; N[k] = -f - ISO;
+    const f = fn(x0 + xi * st, -e + yi * st, -e + zi * st); V[k] = f; const a = Math.abs(f); if (a > mx) mx = a;
   }
+  const NB = 400, lo = Math.log(mx) - 12, hist = new Float64Array(NB);
+  let tot = 0;
+  for (let i = 0; i < V.length; i++) { const a = Math.abs(V[i]); if (a <= 0) continue; const w = a * a; tot += w; const b = Math.min(NB - 1, Math.max(0, Math.floor((Math.log(a) - lo) / 12 * NB))); hist[b] += w; }
+  let acc = 0, t = mx * 0.05;
+  for (let b = NB - 1; b >= 0; b--) { acc += hist[b]; if (acc >= 0.9 * tot) { t = Math.exp(lo + b / NB * 12); break; } }
+  const P = new Float32Array(V.length), N = new Float32Array(V.length);
+  for (let i = 0; i < V.length; i++) { P[i] = V[i] - t; N[i] = -V[i] - t; }
   const out = [];
   for (const [F, col] of [[P, PH_POS], [N, PH_NEG]]) {
     const {pos, idx} = window.SurfaceNets(F, nx, ny, nz, [x0, -e, -e], st);
@@ -5985,16 +6013,16 @@ function initScene() {
   };
   loop();
 }
-const aoOff = m => (m.shape.startsWith('pi') ? 4.7 : 3.3);   // π orbitals are tall: leave more room
+const aoOff = m => 2 * size90() + (m.shape.startsWith('pi') ? 1.6 : 0.9);   // π orbitals are tall: leave more room
 // "show all": bonding MOs in the left column, antibonding on the right, rows from low to high energy
 function allLayout() {
   const L = levels(), bond = L.mo.filter(m => m.bond > 0).sort((a, b) => b.y - a.y), rows = [];
   let y = 0;
   for (const b of bond) {
-    const x = L.mo.find(m => m.id === b.id + 'x'), h = b.shape.startsWith('pi') ? 4.4 : 3.2;
+    const r90 = size90(), x = L.mo.find(m => m.id === b.id + 'x'), h = 2 * r90 + (b.shape.startsWith('pi') ? 1.4 : 0.6);
     y += h / 2; rows.push({b, x, y}); y += h / 2;
   }
-  return {rows, H: y, W: D + 6.4};
+  return {rows, H: y, W: D + 2 * size90() + 2};
 }
 let lastLayout = '';
 function fit() {
@@ -6004,7 +6032,7 @@ function fit() {
     camera.position.copy(new THREE.Vector3(0.12, 0.25, 1).normalize().multiplyScalar(d).add(controls.target)); controls.update();
     return;
   }
-  const off = aoOff(selMO()), d = (S.aos ? 11.8 + off : 11.5) / Math.min(1, (camera.aspect || 1) * 0.95);
+  const off = aoOff(selMO()), g = Math.max(1, size90() / 1.5), d = (S.aos ? 11.8 + off : 11.5) * g / Math.min(1, (camera.aspect || 1) * 0.95);
   controls.target.set(0, S.aos ? -off / 2 : 0, 0);
   camera.position.copy(new THREE.Vector3(0.2, 0.42, 1).normalize().multiplyScalar(d).add(controls.target)); controls.update();
 }
@@ -6031,20 +6059,20 @@ function build() {
   const ax = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-D / 2 - 2.6, 0, 0), new THREE.Vector3(D / 2 + 2.6, 0, 0)]), new THREE.LineBasicMaterial({color: 0x2A2F38, depthTest: false, transparent: true, opacity: 0.9}));
   ax.renderOrder = 2; model.add(ax);
   // the molecular orbital
-  for (const mesh of iso(f.M, S.aos ? 0.8 : 1)) model.add(mesh);
+  for (const mesh of iso(f.M, S.aos ? 0.8 : 1, f.reach)) model.add(mesh);
   // the two atomic orbitals being combined, drawn as outlines beside the molecule
   if (S.aos && !animT0) {
-    const off = aoOff(m), spread = 1.3;
+    const off = aoOff(m), spread = Math.max(1.3, size90() * 1.1 - 0.2);
     for (const [fn, side, sg] of [[f.A, -1, 1], [f.B, 1, f.sg]]) {
       const g = new THREE.Group();
-      for (const mesh of iso((x, y, z) => sg * fn(x, y, z), 0.42)) g.add(mesh);
+      for (const mesh of iso((x, y, z) => sg * fn(x, y, z), 0.42, f.reach)) g.add(mesh);
       g.position.set(side * spread, -off, 0); model.add(g);
     }
     if (S.lbl) {
-      label(`${m.from}(A)`, new THREE.Vector3(-D / 2 - spread, -off - 1.5, 0), 'blab dim');
+      label(`${m.from}(A)`, new THREE.Vector3(-D / 2 - spread, -off - size90() - 0.25, 0), 'blab dim');
       label(f.sg > 0 ? '+' : '−', new THREE.Vector3(0, -off, 0), 'mop');
-      label(`${f.sg > 0 ? '' : '−'}${m.from}(B)`, new THREE.Vector3(D / 2 + spread, -off - 1.5, 0), 'blab dim');
-      label('combine to give ↑', new THREE.Vector3(0, -off + 1.75, 0), 'blab dim');
+      label(`${f.sg > 0 ? '' : '−'}${m.from}(B)`, new THREE.Vector3(D / 2 + spread, -off - size90() - 0.25, 0), 'blab dim');
+      label('combine to give ↑', new THREE.Vector3(0, -off / 2, 0), 'blab dim');
     }
   }
   if (S.node && m.bond < 0) { // nodal plane between the nuclei
@@ -6065,13 +6093,13 @@ function buildAll() {
   const L = levels(), r = fill(), {rows, W} = allLayout(), arrows = n => (n === 2 ? '↑↓' : n === 1 ? '↑' : '');
   const put = (m, cx, cy) => {
     const g = new THREE.Group(), f = moFns(m.shape, L.small);
-    for (const mesh of iso(f.M, 0.9)) g.add(mesh);
+    for (const mesh of iso(f.M, 0.9, f.reach)) g.add(mesh);
     for (const sx of [-D / 2, D / 2]) { const nu = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshBasicMaterial({color: 0x7A1F2E, depthTest: false})); nu.position.set(sx, 0, 0); nu.renderOrder = 3; g.add(nu); }
     if (S.node && m.bond < 0) { const disk = new THREE.Mesh(new THREE.CircleGeometry(1.5, 40), new THREE.MeshBasicMaterial({color: 0xE3E6EB, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false})); disk.rotation.y = Math.PI / 2; g.add(disk); }
     g.position.set(cx, cy, 0); model.add(g);
     if (S.lbl) {
       const e = r.occ[m.id].map(arrows).filter(Boolean).join(' ');
-      label(`${m.name.replace('*', '<sup>*</sup>')}${e ? ` <span class="mel">${e}</span>` : ''}`, new THREE.Vector3(cx, cy - (m.shape.startsWith('pi') ? 1.95 : 1.35), 0), m.bond > 0 ? 'bsig' : 'bsig pi');
+      label(`${m.name.replace('*', '<sup>*</sup>')}${e ? ` <span class="mel">${e}</span>` : ''}`, new THREE.Vector3(cx, cy - size90() - (m.shape.startsWith('pi') ? 0.45 : 0.1), 0), m.bond > 0 ? 'bsig' : 'bsig pi');
     }
   };
   for (const {b, x, y} of rows) { put(b, -W / 2, y); if (x) put(x, W / 2, y); }
